@@ -6,9 +6,12 @@ use shenko_compact_budget::{BudgetCompactPlugin, BudgetConfig};
 use shenko_compact_snap::{SnapCompact, SnapCompactPlugin, SnapConfig};
 use shenko_context_policy::{
     Availability, ContextInput, ContextPolicy, ContextPolicyHost, ItemKind, MemoryHistory,
-    ModelCaps, PolicyError, PolicyRegistry, VisionCaps, WindowBase, WindowEntry, WindowLedger,
+    ModelCaps, PolicyError, PolicyRegistry, StoreWindowLog, VisionCaps, WindowBase, WindowEntry,
+    WindowLedger,
 };
 use shenko_kernel::{FiberHandle, PluginRegistry};
+use shenko_store::Store;
+use shenko_types::ids::EntityId;
 use tokio_util::sync::CancellationToken;
 
 fn history(text: impl Fn(usize) -> String) -> MemoryHistory {
@@ -94,7 +97,7 @@ async fn snapcompact_renders_frames_and_uninstalls_independently() {
     snap.dispose().await.unwrap();
     let ids: Vec<_> = registry.installed().into_iter().map(|(m, _)| m.id).collect();
     assert_eq!(ids, vec!["budget-compact".to_string()]);
-    assert_eq!(registry.ledger().current().derivatives, window.derivatives);
+    assert_eq!(registry.ledger().current().unwrap().derivatives, window.derivatives);
     h.append(ItemKind::User, "after uninstall", 10);
     // Only budget compact is consulted now, and it is judged against the
     // committed frame window: its text-only window would be larger, so it
@@ -107,9 +110,14 @@ async fn snapcompact_renders_frames_and_uninstalls_independently() {
 
     // Prefix reuse follows the actual input: identical entries whose PNG bytes
     // differ (2000 vs 1999 output chars) are not reusable, nor is anything
-    // built under a previous model/template/encoder generation.
+    // built under a previous model/template/encoder generation. The chain and
+    // its frames live in a real SQLite store and survive a reopen.
     let raw = h.snapshot();
-    let ledger = WindowLedger::new();
+    let dir = std::env::temp_dir().join(format!("shenko-c20-{}", EntityId::new()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let (db, cas, scope) = (dir.join("shenko.db"), dir.join("cas"), EntityId::new());
+    let store = Arc::new(Store::open(db.clone(), cas.clone()).unwrap());
+    let ledger = WindowLedger::new(Arc::new(StoreWindowLog::new(store.clone(), scope)));
     let cut = |chars, source_window, model_generation| {
         let config = SnapConfig { max_tool_output_chars: chars, ..SnapConfig::default() };
         let base = WindowBase {
@@ -121,7 +129,7 @@ async fn snapcompact_renders_frames_and_uninstalls_independently() {
         let input = ContextInput { base, items: &raw, caps: &VISION, used_tokens: used };
         SnapCompact::new(config).prepare(&input).unwrap()
     };
-    let a = ledger.commit(cut(2000, ledger.current().id, 0), &h).unwrap();
+    let a = ledger.commit(cut(2000, ledger.current().unwrap().id, 0), &h).unwrap();
     let b = cut(1999, a.id, 0);
     assert_eq!(b.entries, a.entries, "same ranges, indices and token counts");
     assert_ne!(b.derivatives, a.derivatives, "different pixels");
@@ -129,8 +137,18 @@ async fn snapcompact_renders_frames_and_uninstalls_independently() {
     let first_image = b.entries.iter().position(|e| matches!(e, WindowEntry::Image { .. })).unwrap();
     let text_prefix: u32 = b.entries[..first_image].iter().map(WindowEntry::tokens).sum();
     assert_eq!(b.cost.reusable_prefix_tokens, text_prefix);
-    ledger.set_model_generation(1);
+    ledger.set_model_generation(1).unwrap();
     let c = ledger.commit(cut(1999, b.id, 1), &h).unwrap();
     assert_eq!((c.entries == b.entries, c.derivatives == b.derivatives), (true, true));
     assert_eq!(c.cost.reusable_prefix_tokens, 0, "new binding: nothing reusable");
+    drop((ledger, store));
+
+    let store = Arc::new(Store::open(db, cas).unwrap());
+    let reopened = WindowLedger::new(Arc::new(StoreWindowLog::new(store, scope)));
+    let chain = reopened.all().unwrap();
+    let ids: Vec<_> = chain.iter().skip(1).map(|w| w.id).collect();
+    assert_eq!(ids, vec![a.id, b.id, c.id], "genesis + three windows, in order");
+    assert_eq!(chain[3], c, "frames and body read back byte-identical");
+    assert_eq!(reopened.model_generation().unwrap(), 1);
+    let _ = std::fs::remove_dir_all(dir);
 }

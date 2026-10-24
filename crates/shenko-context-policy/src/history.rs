@@ -56,18 +56,20 @@ pub struct HistoryItem {
     pub tokens: u32,
 }
 
-/// A failed read. It must fail the window operation: treating it as "no
-/// history" would cut a window from a silently truncated record.
+/// A failed history read or window-log write. It must fail the window
+/// operation: treating it as "no history" would cut a window from a silently
+/// truncated record, and a failed append has an unknown outcome until the log
+/// is read again.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error, Serialize, Deserialize)]
-#[error("history read failed: {0}")]
-pub struct HistoryError(pub String);
+#[error("storage failed: {0}")]
+pub struct StorageError(pub String);
 
 /// Read access to raw history, independent of any policy plugin being alive.
 pub trait HistorySource: Send + Sync {
     /// Items with `from <= seq <= to`, in order.
-    fn read_range(&self, from: u64, to: u64) -> Result<Vec<HistoryItem>, HistoryError>;
-    fn read_event(&self, event_id: EntityId) -> Result<Option<HistoryItem>, HistoryError>;
-    fn leaf_seq(&self) -> Result<Option<u64>, HistoryError>;
+    fn read_range(&self, from: u64, to: u64) -> Result<Vec<HistoryItem>, StorageError>;
+    fn read_event(&self, event_id: EntityId) -> Result<Option<HistoryItem>, StorageError>;
+    fn leaf_seq(&self) -> Result<Option<u64>, StorageError>;
 }
 
 /// In-process append-only history used until the durable ledger adapter lands.
@@ -95,18 +97,18 @@ impl MemoryHistory {
 }
 
 impl HistorySource for MemoryHistory {
-    fn read_range(&self, from: u64, to: u64) -> Result<Vec<HistoryItem>, HistoryError> {
+    fn read_range(&self, from: u64, to: u64) -> Result<Vec<HistoryItem>, StorageError> {
         let items = self.items.read();
         let end = (to.saturating_add(1)).min(items.len() as u64) as usize;
         let start = (from as usize).min(end);
         Ok(items[start..end].to_vec())
     }
 
-    fn read_event(&self, event_id: EntityId) -> Result<Option<HistoryItem>, HistoryError> {
+    fn read_event(&self, event_id: EntityId) -> Result<Option<HistoryItem>, StorageError> {
         Ok(self.items.read().iter().find(|i| i.at.event_id == event_id).cloned())
     }
 
-    fn leaf_seq(&self) -> Result<Option<u64>, HistoryError> {
+    fn leaf_seq(&self) -> Result<Option<u64>, StorageError> {
         Ok(self.items.read().last().map(|i| i.at.seq))
     }
 }

@@ -1,11 +1,12 @@
-//! Budget compact over committed SQLite session events: the committed window
-//! still resolves to the raw record after the store is closed and reopened.
+//! Budget compact over committed SQLite session events and a SQLite window
+//! chain: after the store is closed and reopened, the committed window is the
+//! head and still resolves to every raw event, without plugin or registry.
 use std::sync::Arc;
 
 use shenko_compact_budget::{BudgetCompact, BudgetConfig};
 use shenko_context_policy::{
-    CallStatus, CommittedWindow, HistorySource, ItemKind, ModelCaps, PolicyRegistry, StoreHistory,
-    TokenCounter, WindowEntry,
+    CallStatus, HistorySource, ItemKind, ModelCaps, PolicyRegistry, StoreHistory, StoreWindowLog,
+    TokenCounter, WindowEntry, WindowLedger,
 };
 use shenko_store::Store;
 use shenko_types::ids::EntityId;
@@ -61,19 +62,20 @@ fn window_over_store_survives_reopen_and_keeps_every_raw_event() {
     assert_eq!((raw[4].kind.clone(), raw[4].text.as_str()), (ItemKind::User, "plain text, not JSON"));
 
     let caps = ModelCaps { model_id: "text-only".into(), max_context: 1000, vision: None };
-    let registry = PolicyRegistry::new();
+    let log = Arc::new(StoreWindowLog::new(store.clone(), session));
+    let registry = PolicyRegistry::with_ledger(WindowLedger::new(log));
     registry.install(Arc::new(BudgetCompact::new(BudgetConfig::default())));
     let used = raw.iter().map(|i| i.tokens).sum();
     let (prepared, _) = registry.prepare(&history, &caps, used).unwrap();
     let window = registry.commit(prepared, &history).unwrap();
-    let saved = serde_json::to_string(&window).unwrap();
     drop((registry, history, store));
 
-    // Reopen: no plugin, no registry, only the stored window and the store.
+    // Reopen: no plugin, no registry, only the store.
     let store = Arc::new(Store::open(db, cas).unwrap());
-    let history = StoreHistory::new(store, session, count);
-    let window: CommittedWindow = serde_json::from_str(&saved).unwrap();
-    let visible = window.materialize(&history).unwrap();
+    let history = StoreHistory::new(store.clone(), session, count);
+    let head = WindowLedger::new(Arc::new(StoreWindowLog::new(store, session))).current().unwrap();
+    assert_eq!(head, window, "committed window is the durable head");
+    let visible = head.materialize(&history).unwrap();
     let mut seen = Vec::new();
     for entry in &visible {
         match entry {

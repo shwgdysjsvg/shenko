@@ -1,13 +1,15 @@
 //! Committed windows and the commit transaction (§12.3.2).
 //!
-//! In-process ledger until the durable store adapter (#6) exists. A committed
-//! window records its decoder (policy id/version), source refs and derivatives,
-//! so it can be materialized without the plugin that produced it.
+//! A committed window records its decoder (policy id/version), source refs and
+//! derivatives, so it can be materialized without the plugin that produced it.
+//! Where the chain lives is a [`WindowLog`]: in-process, or the durable store.
+use std::sync::Arc;
+
 use parking_lot::Mutex;
 use serde::{Deserialize, Serialize};
 use shenko_types::ids::EntityId;
 
-use crate::history::{HistoryError, HistorySource, ItemRef};
+use crate::history::{StorageError, HistorySource, ItemRef};
 use crate::policy::{CostReport, Derivative, PreparedWindow, WindowBase, WindowEntry};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -58,7 +60,7 @@ fn identities<'a>(
 }
 
 impl CommittedWindow {
-    fn genesis() -> Self {
+    pub fn genesis() -> Self {
         Self {
             id: EntityId::new(),
             generation: 0,
@@ -75,7 +77,7 @@ impl CommittedWindow {
 
     /// The model-visible sequence now: stored entries plus every raw event
     /// that arrived after the window was cut.
-    pub fn materialize(&self, history: &dyn HistorySource) -> Result<Vec<WindowEntry>, HistoryError> {
+    pub fn materialize(&self, history: &dyn HistorySource) -> Result<Vec<WindowEntry>, StorageError> {
         let mut out = self.entries.clone();
         let from = self.covers_through.map_or(0, |seq| seq + 1);
         if let Some(leaf) = history.leaf_seq()? {
@@ -103,52 +105,98 @@ pub enum CommitError {
     #[error("prepared leaf {prepared} is ahead of the history leaf {leaf:?}")]
     LeafAhead { prepared: u64, leaf: Option<u64> },
     #[error(transparent)]
-    History(#[from] HistoryError),
+    Storage(#[from] StorageError),
 }
 
-struct LedgerState {
-    windows: Vec<CommittedWindow>,
-    model_generation: u64,
+/// Durable home of one scope's window chain. The ledger validates; the log
+/// stores and enforces the head compare-and-append, so two writers cannot
+/// both extend the same head.
+pub trait WindowLog: Send + Sync {
+    /// Current head; an empty log creates and returns its genesis window.
+    fn head(&self) -> Result<CommittedWindow, StorageError>;
+    /// Every committed window, oldest first; none is ever discarded.
+    fn all(&self) -> Result<Vec<CommittedWindow>, StorageError>;
+    /// Append `window` only while `expected` is the head; Ok(false) if it moved.
+    fn append(&self, expected: EntityId, window: &CommittedWindow) -> Result<bool, StorageError>;
+    fn model_generation(&self) -> Result<u64, StorageError>;
+    fn set_model_generation(&self, generation: u64) -> Result<(), StorageError>;
+}
+
+/// In-process log for strategies and tests without a durable store.
+pub struct MemoryWindowLog {
+    state: Mutex<(Vec<CommittedWindow>, u64)>,
+}
+
+impl Default for MemoryWindowLog {
+    fn default() -> Self {
+        Self { state: Mutex::new((vec![CommittedWindow::genesis()], 0)) }
+    }
+}
+
+impl WindowLog for MemoryWindowLog {
+    fn head(&self) -> Result<CommittedWindow, StorageError> {
+        Ok(self.state.lock().0.last().cloned().expect("log always has genesis"))
+    }
+
+    fn all(&self) -> Result<Vec<CommittedWindow>, StorageError> {
+        Ok(self.state.lock().0.clone())
+    }
+
+    fn append(&self, expected: EntityId, window: &CommittedWindow) -> Result<bool, StorageError> {
+        let mut state = self.state.lock();
+        if state.0.last().map(|w| w.id) != Some(expected) {
+            return Ok(false);
+        }
+        state.0.push(window.clone());
+        Ok(true)
+    }
+
+    fn model_generation(&self) -> Result<u64, StorageError> {
+        Ok(self.state.lock().1)
+    }
+
+    fn set_model_generation(&self, generation: u64) -> Result<(), StorageError> {
+        self.state.lock().1 = generation;
+        Ok(())
+    }
 }
 
 pub struct WindowLedger {
-    state: Mutex<LedgerState>,
+    log: Arc<dyn WindowLog>,
+    /// Serializes this process's validate-then-append; the log's
+    /// compare-and-append covers any other writer.
+    commit: Mutex<()>,
 }
 
 impl Default for WindowLedger {
     fn default() -> Self {
-        Self::new()
+        Self::new(Arc::new(MemoryWindowLog::default()))
     }
 }
 
 impl WindowLedger {
-    pub fn new() -> Self {
-        Self {
-            state: Mutex::new(LedgerState {
-                windows: vec![CommittedWindow::genesis()],
-                model_generation: 0,
-            }),
-        }
+    pub fn new(log: Arc<dyn WindowLog>) -> Self {
+        Self { log, commit: Mutex::new(()) }
     }
 
-    pub fn current(&self) -> CommittedWindow {
-        self.state.lock().windows.last().cloned().expect("ledger always has genesis")
+    pub fn current(&self) -> Result<CommittedWindow, StorageError> {
+        self.log.head()
     }
 
     /// Every committed window, oldest first; none is ever discarded.
-    pub fn all(&self) -> Vec<CommittedWindow> {
-        self.state.lock().windows.clone()
+    pub fn all(&self) -> Result<Vec<CommittedWindow>, StorageError> {
+        self.log.all()
     }
 
-    pub fn model_generation(&self) -> u64 {
-        self.state.lock().model_generation
+    pub fn model_generation(&self) -> Result<u64, StorageError> {
+        self.log.model_generation()
     }
 
     /// Record a rebind of model weights, chat template, tokenizer or vision
     /// encoder/processor. Windows prepared for the old binding cannot commit,
     /// and no prefix built under it counts as reusable.
-    pub fn set_model_generation(&self, generation: u64) {
-        self.state.lock().model_generation = generation;
+    pub fn set_model_generation(&self, generation: u64) -> Result<(), StorageError> {
+        self.log.set_model_generation(generation)
     }
 
     /// Verify the base still holds and commit atomically. Events appended after
@@ -158,18 +206,19 @@ impl WindowLedger {
         prepared: PreparedWindow,
         history: &dyn HistorySource,
     ) -> Result<CommittedWindow, CommitError> {
-        let mut state = self.state.lock();
-        let current = state.windows.last().expect("ledger always has genesis");
+        let _serial = self.commit.lock();
+        let current = self.log.head()?;
         if prepared.base.source_window != current.id {
             return Err(CommitError::StaleSource {
                 prepared: prepared.base.source_window,
                 current: current.id,
             });
         }
-        if prepared.base.model_generation != state.model_generation {
+        let model_generation = self.log.model_generation()?;
+        if prepared.base.model_generation != model_generation {
             return Err(CommitError::ModelGenerationChanged {
                 prepared: prepared.base.model_generation,
-                current: state.model_generation,
+                current: model_generation,
             });
         }
         let leaf = history.leaf_seq()?;
@@ -207,7 +256,10 @@ impl WindowLedger {
         let total: u32 = next.iter().map(WindowEntry::tokens).sum();
         window.cost.reusable_prefix_tokens = reused;
         window.cost.recompute_tokens = total - reused;
-        state.windows.push(window.clone());
+        if !self.log.append(current.id, &window)? {
+            let current = self.log.head()?.id;
+            return Err(CommitError::StaleSource { prepared: prepared.base.source_window, current });
+        }
         Ok(window)
     }
 }

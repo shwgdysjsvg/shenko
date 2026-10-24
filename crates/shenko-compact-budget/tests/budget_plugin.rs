@@ -71,7 +71,7 @@ async fn budget_window_keeps_unfinished_calls_and_fences_replaced_generations() 
     // Uninstall the strategy; the committed window still resolves to raw events.
     budget.dispose().await.unwrap();
     assert!(registry.installed().is_empty());
-    let visible = registry.ledger().current().materialize(&history).unwrap();
+    let visible = registry.ledger().current().unwrap().materialize(&history).unwrap();
     assert!(visible.iter().any(|e| matches!(e, WindowEntry::Verbatim { at, .. } if *at == late)));
     let unknown_call = visible.iter().find_map(|e| match e {
         WindowEntry::Verbatim { at, .. } => history.read_event(at.event_id).unwrap().filter(|i| {

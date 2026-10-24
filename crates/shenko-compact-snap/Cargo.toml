@@ -14,6 +14,9 @@ unifont = { workspace = true }
 [dev-dependencies]
 shenko-compact-budget = { path = "../shenko-compact-budget" }
 shenko-kernel = { path = "../shenko-kernel" }
+shenko-context-policy = { path = "../shenko-context-policy", features = ["store"] }
+shenko-store = { path = "../shenko-store" }
+shenko-types = { path = "../shenko-types" }
 tokio = { workspace = true }
 tokio-util = { workspace = true }
 [lints.rust]
