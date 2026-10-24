@@ -3,6 +3,7 @@ resolver = "2"
 
 members = [
     "crates/shenko-types",
+    "crates/shenko-identity",
     "crates/shenko-kernel",
     "crates/shenko-store",
     "crates/shenko-broker",
@@ -12,6 +13,7 @@ members = [
     "crates/shenko-channel-napcat-link",
     "crates/shenko-exec-host",
     "crates/shenko-exec-ssh",
+    "crates/shenko-node",
     "crates/shenko-wasm",
     "crates/shenko-context-policy",
     "crates/shenko-compact-budget",

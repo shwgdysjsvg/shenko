@@ -1,0 +1,200 @@
+{
+  "schema_version": 1,
+  "evidence_id": "c17-ownership-evidence-repair-20261025",
+  "issue": "https://github.com/cyjin-yl/shenko/issues/22",
+  "pr": "https://github.com/cyjin-yl/shenko/pull/40",
+  "status": "focused_native_slice_verified_pushed_and_merged",
+  "full_C17_complete": false,
+  "production_integration_complete": false,
+  "full_goal_complete": false,
+  "requirements": [
+    "R026",
+    "R113",
+    "R145",
+    "R147"
+  ],
+  "cases_reference_only": [
+    "A42",
+    "A47",
+    "A48",
+    "A49"
+  ],
+  "full_cases_passed": [],
+  "base_commit": "04c09a4051ba8641ef50265ee572aa373ab453bc",
+  "product_commit": "453fff7e754e46af920dc7fcbc46c9321f41d819",
+  "product_input_files": [
+    "Cargo.toml",
+    "Cargo.lock",
+    "crates/shenko-node/Cargo.toml",
+    "crates/shenko-node/src/lib.rs",
+    "crates/shenko-node/src/main.rs",
+    "scripts/managed_node.py",
+    "crates/shenko-node/tests/managed_journey.py"
+  ],
+  "product_input_sha256": "b437cc24fd79742e9924189cc6f723d01632d1ec8129a5dde929d89ad51c6bea",
+  "manifest": {
+    "source_revision": "453fff7e754e46af920dc7fcbc46c9321f41d819",
+    "artifact_digest": "blake3:991b7934768e6f0ef0ace5492b8961caca0ccc7ac4423f3d36016a113bbe2ebd",
+    "schema": 1,
+    "os": "linux",
+    "arch": "x86_64"
+  },
+  "artifact_sha256": "56ca9fff921c78e0d158eb46f972aafe51b641a21fa2de609ab8197dcc84837f",
+  "ssh_driver_sha256": "3174d5db1a4751f0ae7527887b1ce240fff26429874132f4b5691004936a6fe1",
+  "schema": {
+    "record_wire": 1,
+    "storage": 2,
+    "application_id": 1397247563,
+    "sqlite_master_sha256": "8622f22072e20ac600cc495105871f36218e3e265f85bebf27075c4ddd4eda71",
+    "hash_encoding": "UTF-8 compact JSON of [type,name,tbl_name,sql], non-SQLite objects sorted by type,name"
+  },
+  "changes": [
+    "Immutable/read-only exact ownership/schema preflight before persistent PRAGMAs, exclusive private new file, explicit initialized-v1 migration preserving all legacy rows/identities/ledger/seq.",
+    "Independently commit authenticated known-schema full decoded receipt and source event as E1 before T2 lookup/predicates; retain unassociated/invalid/pending evidence and add bounded export_receipts."
+  ],
+  "environment": {
+    "execution": "SSH doescontainer / shenko-dev-live",
+    "cpus": 8,
+    "memory_bytes": 6442450944,
+    "cargo_jobs": 1,
+    "cargo_incremental": false,
+    "target": "/tmp/shenko-live-target",
+    "build_lock": "/tmp/shenko-cargo.lock",
+    "workers_in_this_workflow": 1,
+    "physical_second_machine": false,
+    "models": "none configured/probed",
+    "trust": "credential-controlled CLI and real isolated loopback OpenSSH; fixture-init parent and synthetic identity anchor, not production registry"
+  },
+  "verification": {
+    "initial_check_exit": 0,
+    "initial_check_product": "7cf04bd1513966219b28f681980f0b8e65979139",
+    "final_node_build_exit": 0,
+    "final_ssh_example_build_exit": 0,
+    "related_tests": {
+      "exit": 0,
+      "passed": 15,
+      "failed": 0,
+      "ignored": 0,
+      "tested_product": "7cf04bd1513966219b28f681980f0b8e65979139",
+      "reused_after_literal_schema_filter_fix": true,
+      "actual_15_test_package_inputs_unchanged": true,
+      "shenko_node_rust_tests": 0,
+      "new_rust_tests": 0
+    },
+    "final_journey_exit": 0,
+    "journey_scenarios": 2,
+    "inherited_scenarios": 2,
+    "additional_independent_scenarios": 0,
+    "journeys": [
+      {
+        "id": 1,
+        "passed": true,
+        "install_operation": "bc9d6b1d-95dc-5b35-a14a-bd916c35773c",
+        "deployment_id": "6eb932bb-b40f-4c71-971e-1e42384cdcd5",
+        "install_attempts": 1,
+        "loss": "actually closed SSH stream after durable install receipt",
+        "unrelated_v0_WAL_db_unchanged": true,
+        "legacy_migration": {
+          "old_tables_preserved": 10,
+          "source_readonly": true,
+          "storage_schema": 2
+        },
+        "bounds": "legacy source was opened immutable/read-only; migration only on a new SQLite backup, not original data"
+      },
+      {
+        "id": 2,
+        "passed": true,
+        "task_id": "85b464a0-fa93-492a-bf30-2ae9ed30068e",
+        "epoch_transition": [
+          "1",
+          "2"
+        ],
+        "terminal_results": 1,
+        "raw_source_events": 2,
+        "receipt_rows": 3,
+        "observed": [
+          "Original genuine result before task association retained and exportable after separate process reopen.",
+          "Contradictory outer result refused at transcript check; full receipt retained; no premature task result.",
+          "Explicit pure-task handoff still fences old owner settlement; valid current result terminal exactly once.",
+          "Invalid, terminal and settled receipt classifications remain after reopen; duplicate original returns same durable evidence."
+        ]
+      }
+    ],
+    "static_only": [
+      "Wrong-computation acceptance-predicate refusal uses the same already-committed E1 boundary and durable invalid classification; no separate runtime wrong-computation fault is claimed.",
+      "No new end-to-end production scheduler/unknown-schema/fault-injected T2-storage-failure scenario was run."
+    ],
+    "failure_history": [
+      "An initial local shell quoting parse failed before executing the edit; no source modification occurred.",
+      "First journey command printed JOURNEY_EXIT=0, then its optional summary Python command had a quoting SyntaxError and made that wrapper exit 1. Raw result.json and journey output were independently read; final source journey wrapper exited 0.",
+      "The installed old gh pr edit command failed on GitHub classic-projects deprecation after a successful push. The normal authenticated gh REST PATCH updated the PR body; ready/merge used standard API checks without bypassing protection."
+    ],
+    "commands": [
+      "cargo check -p shenko-node",
+      "SHENKO_SOURCE_REVISION=453fff7e754e46af920dc7fcbc46c9321f41d819 cargo build -p shenko-node",
+      "cargo build -p shenko-exec-ssh --example task_ssh",
+      "cargo test -p shenko-node -p shenko-exec-ssh -p shenko-store -p shenko-types",
+      "python3 -I crates/shenko-node/tests/managed_journey.py REPO NODE_BINARY SSH_DRIVER SSHD LIB_DIR NEW_ROOT V1_DATA_DIR"
+    ],
+    "docs_check_exit": 0,
+    "fmt_check_exit": 0,
+    "diff_check_exit": 0
+  },
+  "artifacts": {
+    "candidate_repo": "/tmp/shenko-c17-repair-LzjgwLDo/repo",
+    "binary": "/tmp/shenko-c17-repair-LzjgwLDo/shenko-node-final",
+    "ssh_driver": "/tmp/shenko-c17-repair-LzjgwLDo/task_ssh",
+    "build_log": "/tmp/shenko-c17-repair-LzjgwLDo/build-final.log",
+    "tests_log": "/tmp/shenko-c17-repair-LzjgwLDo/related-tests.log",
+    "journey_log": "/tmp/shenko-c17-repair-LzjgwLDo/journey-final.log",
+    "journey_result": "/tmp/shenko-c17-repair-LzjgwLDo/journey-final/result.json",
+    "raw_receipts": "/tmp/shenko-c17-repair-LzjgwLDo/journey-final/deployment",
+    "original_legacy_source": "/tmp/shenko-c17-kxCI4JuI/journey-final/remote-worker/data",
+    "final_product_bundle": "/tmp/shenko-c17-repair-LzjgwLDo/final.bundle",
+    "final_product_bundle_sha256": "052d2f8e1b41b2388c041911b7f69e6fbcc7a4f0452a4f8341d2464d46ba68b1"
+  },
+  "bounds": [
+    "Only bounded pure blake3 task, no arbitrary external effects, old computation not claimed stopped.",
+    "Known-schema typed adapter, not complete EvidenceIngress; unknown schema/digest/auth failures rejected before E1. Canonical decoded receipts are stored, not a byte-for-byte archive of arbitrary stdin.",
+    "Receipt export cursor enumerates arrival, not later mutable classification updates; no autonomous pending-receipt reconciliation scheduler.",
+    "Storage2 is separate from record/wire1. DELETE/FULL/foreign_keys profile claims process_crash only; not default WAL/power_loss.",
+    "Member/provisioning trust is supplied by installation control, not automatic discovery or authenticated production registry.",
+    "Same managed container with separate data dirs/native processes and real loopback SSH; not physical two-node, model, election, quorum, privacy-routing or long-run evidence."
+  ],
+  "remaining": [
+    "C01 baseline shenko-store Ledger::new resets ledger_id/seq on reopen; no ledger/store code was changed here. Preserve historical provenance when fixing #6.",
+    "C01/C22 actual durable dispatcher, real child admission/C07-T2, registry/member authority and arbitrary resource fencing remain.",
+    "Full original R/B/cases, A42/A47/A48/A49, platform/WASM, unknown-schema/raw history/object closure/image recovery and 7/30-day observation remain."
+  ],
+  "preservation": {
+    "shared_source_written": false,
+    "shared_head_observed": "d4b612b1235b4fa5e658a4c2f5b3769b49ccef54",
+    "shared_patch_sha256_observed": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "shared_source_synchronized": false,
+    "original_worktrees_and_fixtures_preserved": true,
+    "owned_sshd_and_proxy_stopped": true,
+    "listener_connect_errnos": [
+      111,
+      111
+    ],
+    "force_push_or_protection_changes": false
+  },
+  "delivery": {
+    "state": "MERGED",
+    "stack_parent_pr": 37,
+    "git_base": "main",
+    "semantic_dependencies": [
+      6,
+      12
+    ],
+    "pr_head": "b17ec86f65ec7e082de74efec356c68e3a28f643",
+    "merge_commit": "d593acfff33f1fa0f881be2497ee47f6784f396d",
+    "remote_main_read_back": "d593acfff33f1fa0f881be2497ee47f6784f396d",
+    "merge_tree_equals_verified_candidate": true,
+    "github_ci_checks": 0,
+    "force_push_or_protection_changes": false,
+    "issue_remains_open": true,
+    "issue22_comment": "https://github.com/cyjin-yl/shenko/issues/22#issuecomment-6388655564",
+    "ledger_P1_handoff": "https://github.com/cyjin-yl/shenko/issues/6#issuecomment-6388656298"
+  }
+}

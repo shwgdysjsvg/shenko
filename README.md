@@ -18,6 +18,7 @@
 | [文档总索引](docs/INDEX.md) | 现行、历史与研究资料的真实盘点，含全部旧稿去向 |
 | [完整交付合同](docs/governance/COMPLETION.md) | 什么才算完成，以及如何证明 |
 | [GitHub 接入与 PR](docs/governance/GITHUB.md) | 本人身份、认证、自己的 fork、持续 PR 更新 |
+| [CONTRIBUTORS.md](CONTRIBUTORS.md) | 真实贡献来源、Git 作者身份与先对齐任务分配的协作约定 |
 | [Claude 启动](docs/governance/CLAUDE.md) | bypassPermissions、Opus 5.5、ultracode、原生 goal、headless 与 resume |
 | [运行与恢复](docs/governance/CONTINUATION.md) | 跨 session、goal 清除、worker 与真实外部状态接续 |
 | [上游治理研究](docs/research/agent-development-governance.md) | Pi/OMP、Symphony/Codex、Anthropic、Superpowers、gstack、Spec Kit 的采用与差异 |

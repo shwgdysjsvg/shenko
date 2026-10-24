@@ -1,0 +1,149 @@
+{
+  "schema_version": 1,
+  "evidence_id": "c17-native-first-journey-20261025",
+  "issue": "https://github.com/cyjin-yl/shenko/issues/22",
+  "pr": "https://github.com/cyjin-yl/shenko/pull/37",
+  "requirements": [
+    "R026",
+    "R113",
+    "R145",
+    "R147"
+  ],
+  "cases_reference_only": [
+    "A42",
+    "A47",
+    "A48",
+    "A49"
+  ],
+  "full_cases_passed": [],
+  "status": "verified_isolated_native_slice",
+  "full_C17_complete": false,
+  "production_integration_complete": false,
+  "base_commit": "82e71cbfdfb8128bb76d4f0e5452db3fe19f3285",
+  "product_commit": "4a4f5e4e1254ceb48726532291da53cfee9c5668",
+  "product_input_files": [
+    "Cargo.toml",
+    "Cargo.lock",
+    "crates/shenko-node/Cargo.toml",
+    "crates/shenko-node/src/lib.rs",
+    "crates/shenko-node/src/main.rs",
+    "scripts/managed_node.py",
+    "crates/shenko-node/tests/managed_journey.py"
+  ],
+  "product_input_sha256": "219c1448c1b50abf9893b291f34577bd07ebdb730daebc99bea30951c1a71183",
+  "manifest": {
+    "arch": "x86_64",
+    "artifact_digest": "blake3:5ab9d92596cc81f9635c401568ce198ab0d50af4d6f25baea72b38a879662e8c",
+    "os": "linux",
+    "schema": 1,
+    "source_revision": "4a4f5e4e1254ceb48726532291da53cfee9c5668"
+  },
+  "artifact_sha256": "3d7405a0f030e9ef6a8d27a2b2136b2cf22f8e6aadf4abba74ca7b8343fc62ae",
+  "environment": {
+    "execution": "SSH doescontainer, shenko-dev-live",
+    "worker_concurrency": 1,
+    "cpus": 8,
+    "memory_bytes": 6442450944,
+    "cargo_jobs": 1,
+    "incremental": false,
+    "target": "/tmp/shenko-live-target",
+    "shared_build_lock": "/tmp/shenko-cargo.lock",
+    "node_kind": "two private independent SQLite directories, stable node identities, separate native processes and real loopback OpenSSH; same OS/container",
+    "physical_second_machine": false,
+    "models": "none configured/probed; no smart-node evidence",
+    "identity_anchor": "synthetic already-existing controller fixture, installation-control trust; not a live user subject discovery",
+    "parent_task": "explicit existing C07 fixture-init; not production scheduler admission"
+  },
+  "verification": {
+    "cargo_build_node_exit": 0,
+    "cargo_test_related_exit": 0,
+    "existing_rust_tests_passed": 15,
+    "failed": 0,
+    "ignored": 0,
+    "new_rust_tests": 0,
+    "new_journey_scenarios": 2,
+    "journey_exit": 0,
+    "commands": [
+      "SHENKO_SOURCE_REVISION=4a4f5e4e1254ceb48726532291da53cfee9c5668 cargo build -p shenko-node",
+      "cargo test -p shenko-node -p shenko-exec-ssh -p shenko-store -p shenko-types",
+      "python3 -I crates/shenko-node/tests/managed_journey.py REPO NODE_BINARY SSH_DRIVER SSHD LIB_DIR NEW_ROOT"
+    ],
+    "journeys": [
+      {
+        "id": 1,
+        "passed": true,
+        "install_operation": "10952237-198e-59e5-b9d5-37b0b4945c32",
+        "deployment_id": "8b57042b-9b71-4c64-badf-fe8fcdf28cb2",
+        "loss_injection": "proxy actually closed SSH stream after persistent installation receipt",
+        "install_attempts": 1,
+        "observed": [
+          "original receipt queried without redispatch",
+          "repeated mutating deployment stages query original operations",
+          "retired virgin identity preserved; existing self adopted",
+          "actual source/artifact/schema and fresh native capability snapshot read back",
+          "one-shot worker only, no new subject or daemon"
+        ]
+      },
+      {
+        "id": 2,
+        "passed": true,
+        "task_id": "36eb725d-e831-4c59-a50a-67aee29c4212",
+        "observed": [
+          "original remote result queried before explicit pure-task handoff",
+          "execution epoch/revision 1 to 2; TaskRecord owner unchanged",
+          "stale owner event imported but authoritative settlement refused",
+          "new owner produces the only terminal result",
+          "duplicate and late results cannot settle again",
+          "2 source events and 2 assignment records retained across separate process reopen"
+        ]
+      }
+    ],
+    "failure_history": [
+      "Initial remote heredoc quoting failed locally before successful source creation; no shared source was written.",
+      "Initial cargo check exit 101: nonexistent CasStore name; adapted, then selected bounded objects in the same SQLite transaction.",
+      "A mistaken --example none invocation exited 101 before compilation; later actual node build exited 0.",
+      "First live fixture journey exited 1: new tmp-based authorized_keys rejected by test sshd StrictModes. New loopback fixture only was corrected; original failed fixture/logs preserved. Same two scenarios then passed on final product."
+    ]
+  },
+  "bounds": {
+    "service": "one-shot native child, not installed continuous Shenko subject",
+    "task_contract": "bounded <=64KiB deterministic blake3, no external effects",
+    "fencing": "current connected authoritative result store rejects old assignment; no global election or arbitrary external resource fence",
+    "storage": "node DB SQLite 3.46.0 DELETE journal, FULL and foreign_keys read back, process_crash claim only; not the complete SPEC default WAL profile",
+    "objects": "bounded input/result objects within same SQLite transaction",
+    "wire": "new counters are canonical decimal strings; shared TaskRecord internal storage retains baseline representation",
+    "secrets": "node request schema has no provider secret/config copy; local SSH private key handle stays on controller",
+    "exports": "bounded native-journey events only, not all main-app memories/effects"
+  },
+  "artifacts": {
+    "candidate_repo": "/tmp/shenko-c17-kxCI4JuI/repo",
+    "binary": "/tmp/shenko-c17-kxCI4JuI/shenko-node-4a4f5e4",
+    "build_log": "/tmp/shenko-c17-kxCI4JuI/node-build-final.log",
+    "tests_log": "/tmp/shenko-c17-kxCI4JuI/related-tests.log",
+    "journey_log": "/tmp/shenko-c17-kxCI4JuI/journey-final.log",
+    "journey_result": "/tmp/shenko-c17-kxCI4JuI/journey-final/result.json",
+    "raw_receipts": "/tmp/shenko-c17-kxCI4JuI/journey-final/deployment",
+    "failed_fixture_log": "/tmp/shenko-c17-kxCI4JuI/journey-r1.log"
+  },
+  "remaining": [
+    "Wire into actual C01 durable outbox -> child admission -> C07/T2 and registry-derived authenticated context; this slice uses a trusted OS/SSH control CLI and explicit fixture parent.",
+    "Trusted identity discovery and live subject import, member authority/reconfiguration and service lifecycle are not implemented by a caller-supplied proof reference. Evolved branches are rejected, not reset.",
+    "Actual reachable model profiles, heterogeneous providers, privacy-aware routing, strongest usable model election, recursive takeover, partitions/quorum and intelligent islands remain.",
+    "Only pure digest tasks may transfer. Old computation is not claimed stopped; arbitrary shell, model, message or deployment effects require their resource-specific reconciliation/fencing.",
+    "Global raw history/objects/tombstones/merge watermarks, complete no-LLM system logging/export, encrypted disk-image recovery and source closure remain.",
+    "Android/macOS/Windows/real WASM node support, production service management, physical second machine, power-loss and 7/30-day evidence remain."
+  ],
+  "cleanup": {
+    "owned_sshd_stopped": true,
+    "owned_proxy_stopped": true,
+    "connect_errno": 111,
+    "fixtures_and_receipts_preserved": true,
+    "shared_source_written": false,
+    "force_push_or_protection_changes": false
+  },
+  "preservation_observation": {
+    "shared_head": "d4b612b1235b4fa5e658a4c2f5b3769b49ccef54",
+    "shared_tracked_patch_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "observation": "read-only actual root shared source; original worktrees/other workers were not traversed or changed"
+  }
+}

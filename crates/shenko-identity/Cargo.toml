@@ -1,0 +1,13 @@
+[package]
+name = "shenko-identity"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+cordis-core.workspace = true
+shenko-types = { path = "../shenko-types" }
+chrono.workspace = true
+
+[dev-dependencies]
+tokio.workspace = true

@@ -1,20 +1,23 @@
 //! WebSocket handler — routes UI messages to subject inbox, streams subject output.
 //! SPEC §21: single subject timeline, real-time streaming.
-use std::sync::atomic::{AtomicBool, AtomicI64, AtomicUsize, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, AtomicI64, AtomicUsize, Ordering};
 
 use axum::{
-    extract::{ws::{WebSocket, WebSocketUpgrade, Message}, Extension},
+    extract::{
+        Extension,
+        ws::{Message, WebSocket, WebSocketUpgrade},
+    },
     response::Response,
 };
-use tracing::{info, warn, debug};
-use tokio::sync::{broadcast, mpsc::Sender};
-use serde::{Deserialize, Serialize};
-use uuid::Uuid;
 use chrono::Utc;
+use serde::{Deserialize, Serialize};
 use shenko_subject::inbox::{InboxEvent, InboxEventKind};
 use shenko_subject::outbox::OutboxMessage;
 use shenko_types::ids::EntityId;
+use tokio::sync::{broadcast, mpsc::Sender};
+use tracing::{debug, info, warn};
+use uuid::Uuid;
 
 /// Message on the subject timeline
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -25,6 +28,12 @@ pub struct TimelineMessage {
     pub timestamp: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub stream: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub step: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub step_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub commit_ref: Option<String>,
 }
 
 /// Live facts shared by the WS layer and the read-only `/api/self` endpoint.
@@ -65,7 +74,9 @@ impl LiveStatus {
     /// counter when the socket closes (including every early-exit path).
     pub fn connection_added(self: &Arc<Self>) -> ConnectionGuard {
         self.connections.fetch_add(1, Ordering::Relaxed);
-        ConnectionGuard { live: Arc::clone(self) }
+        ConnectionGuard {
+            live: Arc::clone(self),
+        }
     }
 
     pub fn connections(&self) -> usize {
@@ -125,6 +136,7 @@ pub struct WsState {
     pub outbox_tx: Option<std::sync::Arc<broadcast::Sender<OutboxMessage>>>,
     /// Live connection/subject facts shared with `/api/self`.
     pub live: Arc<LiveStatus>,
+    pub store: Option<Arc<shenko_store::Store>>,
 }
 
 impl WsState {
@@ -135,6 +147,7 @@ impl WsState {
             inbox_tx: None,
             outbox_tx: None,
             live: Arc::new(LiveStatus::new()),
+            store: None,
         }
     }
 
@@ -145,6 +158,7 @@ impl WsState {
             inbox_tx: Some(std::sync::Arc::new(inbox_tx)),
             outbox_tx: None,
             live: Arc::new(LiveStatus::new()),
+            store: None,
         }
     }
 
@@ -165,14 +179,37 @@ impl WsState {
 }
 
 impl Default for WsState {
-    fn default() -> Self { Self::new() }
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
-pub async fn ws_handler(
-    ws: WebSocketUpgrade,
-    Extension(state): Extension<WsState>,
-) -> Response {
+pub async fn ws_handler(ws: WebSocketUpgrade, Extension(state): Extension<WsState>) -> Response {
     ws.on_upgrade(move |socket| handle_socket(socket, state))
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "snake_case")]
+enum SubmissionStage {
+    Queued,
+    Rejected,
+}
+
+#[derive(Serialize)]
+struct SubmissionReceipt<'a> {
+    schema_version: u32,
+    #[serde(rename = "type")]
+    kind: &'static str,
+    submission_id: &'a str,
+    stage: SubmissionStage,
+    detail: &'static str,
+}
+
+#[derive(Deserialize)]
+struct UserSubmission {
+    submission_id: String,
+    message_id: String,
+    content: String,
 }
 
 async fn handle_socket(mut socket: WebSocket, state: WsState) {
@@ -185,15 +222,21 @@ async fn handle_socket(mut socket: WebSocket, state: WsState) {
     // Send welcome
     let welcome = TimelineMessage {
         role: "system".to_string(),
-        content: "已连接到 Shenko（深刻）。持续思考中。".to_string(),
+        content: "已连接传输服务；处理状态以持久结果为准。".to_string(),
         message_id: Uuid::new_v4().to_string(),
         timestamp: Utc::now().to_rfc3339(),
         stream: None,
+        step: None,
+        step_id: None,
+        commit_ref: None,
     };
     if let Ok(json) = serde_json::to_string(&welcome) {
         let _ = socket.send(Message::Text(json.into())).await;
     }
 
+    let mut identity_revision: Option<u64> = None;
+    let mut committed_seq = 0u64;
+    let mut history = std::collections::VecDeque::new();
     loop {
         tokio::select! {
             // Subject broadcasts → all WS clients
@@ -211,15 +254,25 @@ async fn handle_socket(mut socket: WebSocket, state: WsState) {
                 }
             }
             // Subject model output → every connected client. SPEC §5.1, §21.12
-            out = recv_outbox(&mut outbox_rx) => {
+            out = recv_committed(&state, &mut committed_seq, &mut history, &mut outbox_rx) => {
                 match out {
                     Some(out) => {
+                        // Identity revisions change mid-session (self naming,
+                        // CLI rename); tell the page so it re-reads /api/self.
+                        if out.identity_revision.is_some() && out.identity_revision != identity_revision {
+                            identity_revision = out.identity_revision;
+                            let note = serde_json::json!({ "type": "identity", "revision": identity_revision });
+                            if socket.send(Message::Text(note.to_string().into())).await.is_err() { break; }
+                        }
                         let msg = TimelineMessage {
                             role: "subject".to_string(),
-                            content: out.content,
-                            message_id: Uuid::new_v4().to_string(),
+                            content: out.text,
+                            message_id: out.step_id.to_string(),
                             timestamp: Utc::now().to_rfc3339(),
                             stream: None,
+                            step: Some(out.step.to_string()),
+                            step_id: Some(out.step_id.to_string()),
+                            commit_ref: Some(out.commit_ref.to_string()),
                         };
                         if let Ok(json) = serde_json::to_string(&msg) {
                             if socket.send(Message::Text(json.into())).await.is_err() { break; }
@@ -233,7 +286,7 @@ async fn handle_socket(mut socket: WebSocket, state: WsState) {
                 match msg {
                     Some(Ok(Message::Text(text))) => {
                         debug!("ws recv {} bytes", text.len());
-                        if let Ok(user_msg) = serde_json::from_str::<TimelineMessage>(&text) {
+                        if let Ok(user_msg) = serde_json::from_str::<UserSubmission>(&text) {
                             // Route the user message into the subject inbox (SPEC §5.1).
                             let event = InboxEvent {
                                 event_id: EntityId::new(),
@@ -241,26 +294,31 @@ async fn handle_socket(mut socket: WebSocket, state: WsState) {
                                 payload: serde_json::json!({
                                     "content": user_msg.content,
                                     "message_id": user_msg.message_id,
-                                    "role": user_msg.role,
+                                    "submission_id": user_msg.submission_id,
+                                    "role": "user",
                                 }),
                                 created_at: Utc::now(),
                                 source: "web_ui".to_string(),
                             };
-                            if let Some(tx) = &state.inbox_tx {
-                                let _ = tx.try_send(event);
-                            }
-
-                            // Brief echo back to the sender only.
-                            let reply = TimelineMessage {
-                                role: "subject".to_string(),
-                                content: format!("收到。"),
-                                message_id: Uuid::new_v4().to_string(),
-                                timestamp: Utc::now().to_rfc3339(),
-                                stream: None,
+                            // A successful try_send is only volatile queue admission,
+                            // not persistence or a subject decision. Never echo success
+                            // when the bounded inbox is full or its consumer has stopped.
+                            let (stage, detail) = match &state.inbox_tx {
+                                Some(tx) => match tx.try_send(event) {
+                                    Ok(()) => (SubmissionStage::Queued, "已进入内存队列；尚未持久化或处理，服务退出前仍可能丢失。"),
+                                    Err(tokio::sync::mpsc::error::TrySendError::Full(_)) => (SubmissionStage::Rejected, "主体输入队列已满，请稍后重试。"),
+                                    Err(tokio::sync::mpsc::error::TrySendError::Closed(_)) => (SubmissionStage::Rejected, "主体已停止，需要恢复。"),
+                                },
+                                None => (SubmissionStage::Rejected, "主体输入未连接。"),
                             };
-                            if let Ok(json) = serde_json::to_string(&reply) {
-                                let _ = socket.send(Message::Text(json.into())).await;
-                            }
+                            // This wire receipt is what the actual page consumes.
+                            // Queued is deliberately NOT durable acceptance.
+                            let reply = SubmissionReceipt {
+                                schema_version: 1, kind: "receipt", submission_id: &user_msg.submission_id,
+                                stage, detail,
+                            };
+                            let json = serde_json::to_string(&reply).expect("receipt serialization");
+                            if socket.send(Message::Text(json.into())).await.is_err() { break; }
                         }
                     }
                     Some(Ok(Message::Close(_))) | None => { info!("ws disconnected"); break; }
@@ -274,9 +332,7 @@ async fn handle_socket(mut socket: WebSocket, state: WsState) {
 
 /// Await the next subject outbox message. Pends forever when no outbox is wired,
 /// so the select loop stays idle instead of spinning. SPEC §21.12.
-async fn recv_outbox(
-    rx: &mut Option<broadcast::Receiver<OutboxMessage>>,
-) -> Option<OutboxMessage> {
+async fn recv_outbox(rx: &mut Option<broadcast::Receiver<OutboxMessage>>) -> Option<OutboxMessage> {
     match rx {
         Some(rx) => loop {
             match rx.recv().await {
@@ -286,5 +342,33 @@ async fn recv_outbox(
             }
         },
         None => std::future::pending().await,
+    }
+}
+
+async fn recv_committed(
+    state: &WsState,
+    seq: &mut u64,
+    history: &mut std::collections::VecDeque<OutboxMessage>,
+    wake: &mut Option<broadcast::Receiver<OutboxMessage>>,
+) -> Option<OutboxMessage> {
+    let Some(store) = &state.store else {
+        return recv_outbox(wake).await;
+    };
+    loop {
+        if let Some(out) = history.pop_front() {
+            *seq = out.commit_ref.seq.0;
+            state.live.record_outbox(out.step);
+            return Some(out);
+        }
+        match shenko_subject::outbox::committed_after(store, *seq, 64) {
+            Ok(messages) => history.extend(messages),
+            Err(e) => {
+                tracing::error!(err=%e,"committed timeline read failed; no guessed replay");
+                return None;
+            }
+        }
+        if history.is_empty() {
+            tokio::time::sleep(std::time::Duration::from_millis(250)).await;
+        }
     }
 }

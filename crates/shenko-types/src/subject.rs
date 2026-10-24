@@ -1,47 +1,13 @@
 //! Subject step types — SPEC §5.1, §41.3
 //! S0: fix input plan + context version.
 //! S1: commit decision, event disposition, delegation intent, unique successor.
-use serde::{Deserialize, Serialize};
-use crate::ids::{EntityId, BranchId, ControllerEpoch, RuntimeGeneration, RecordRevision, TaskRevision};
 use crate::commit::CommitRef;
+use crate::ids::{
+    BranchId, ControllerEpoch, EntityId, RecordRevision, RuntimeGeneration, TaskRevision,
+};
 use crate::object::ObjectRef;
 use crate::task::WaitJoinPolicy;
-
-/// S0: input plan sealed for one subject step.
-/// Fixes the attention context version before the model is called.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SubjectStepInput {
-    pub step_id: EntityId,
-    pub step_seq: u64,
-    pub agent_id: EntityId,
-    pub branch_id: crate::ids::BranchId,
-    pub controller_epoch: crate::ids::ControllerEpoch,
-    pub attention_context_ref: ObjectRef,
-    pub inbox_cursor: InboxCursor,
-    pub sealed_at: chrono::DateTime<chrono::Utc>,
-    pub sealed_commit: CommitRef,
-}
-
-/// S1: subject step decision committed.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SubjectStepDecision {
-    pub step_id: EntityId,
-    pub decided_at: chrono::DateTime<chrono::Utc>,
-    pub decision_ref: ObjectRef,
-    pub event_dispositions: Vec<EventDisposition>,
-    pub delegation_intents: Vec<DelegationIntent>,
-    pub memory_intents: Vec<MemoryIntent>,
-    pub successor_request_id: EntityId,
-    pub semantic_wait: Option<SemanticWait>,
-    pub decided_commit: CommitRef,
-}
-
-/// Inbox cursor — tracks consumed events.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct InboxCursor {
-    pub through_event_id: Option<EntityId>,
-    pub consumed_count: u64,
-}
+use serde::{Deserialize, Serialize};
 
 /// How a subject step handled an incoming event.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -116,7 +82,7 @@ pub enum MemoryIntentKind {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SemanticWait {
     pub condition_description: String,
-    pub max_wait_secs: u64,  // ≤ 600
+    pub max_wait_secs: u64, // ≤ 600
     pub started_at: chrono::DateTime<chrono::Utc>,
 }
 
@@ -124,7 +90,10 @@ impl SemanticWait {
     pub const MAX_WAIT_SECS: u64 = 600;
 
     pub fn new(condition: impl Into<String>, max_wait_secs: u64) -> Self {
-        assert!(max_wait_secs <= Self::MAX_WAIT_SECS, "semantic wait max 600s");
+        assert!(
+            max_wait_secs <= Self::MAX_WAIT_SECS,
+            "semantic wait max 600s"
+        );
         Self {
             condition_description: condition.into(),
             max_wait_secs,
@@ -160,7 +129,13 @@ pub struct SubjectBranchHead {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
-pub enum SubjectMode { Active, Quiescing, Handoff, Paused, RecoveryBlocked }
+pub enum SubjectMode {
+    Active,
+    Quiescing,
+    Handoff,
+    Paused,
+    RecoveryBlocked,
+}
 
 /// Persistent genesis record — the immutable birth of a subject instance. SPEC §44.6
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -177,7 +152,10 @@ pub struct SubjectGenesis {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct GenesisRef { pub ledger_id: EntityId, pub genesis_id: EntityId }
+pub struct GenesisRef {
+    pub ledger_id: EntityId,
+    pub genesis_id: EntityId,
+}
 
 /// SubjectStep state machine per SPEC §41.5
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -194,6 +172,7 @@ pub struct SubjectStep {
     pub active_request_id: Option<EntityId>,
     pub active_attempt_id: Option<EntityId>,
     pub model_result_ref: Option<ObjectRef>,
+    pub model_outcome_ref: Option<ObjectRef>,
     pub decision_ref: Option<ObjectRef>,
     pub commit_ref: Option<CommitRef>,
     pub retry_reason_ref: Option<ObjectRef>,
@@ -204,7 +183,76 @@ pub struct SubjectStep {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum SubjectStepState {
-    Planned, Preparing, AwaitingModel, ResultRecorded, Committed, RetryPending, Retired,
+    Planned,
+    Preparing,
+    AwaitingModel,
+    ResultRecorded,
+    Committed,
+    RetryPending,
+    Retired,
+}
+
+/// The terminal provider evidence is not equivalent to its text content.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SubjectModelOutcome {
+    pub schema_version: u32,
+    pub request_id: EntityId,
+    pub result_ref: ObjectRef,
+    pub stop_reason: String,
+    /// Exact successful HTTP response body (or explicit offline fixture), not a text projection.
+    pub raw_response: String,
+    pub usage: Option<serde_json::Value>,
+}
+
+impl SubjectModelOutcome {
+    pub fn is_complete(&self) -> bool {
+        self.schema_version == 2
+            && !self.raw_response.is_empty()
+            && matches!(
+                self.stop_reason.as_str(),
+                "stop" | "end_turn" | "stop_sequence"
+            )
+    }
+}
+
+/// A complete result rejected before any S1 action admission. R0 retains its
+/// evidence and registers a new step/request; it never retries the old seal.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ControlOutputRejection {
+    pub schema_version: u32,
+    pub supersedes_step_id: EntityId,
+    pub replacement_step_id: EntityId,
+    pub request_id: EntityId,
+    pub input_plan_ref: ObjectRef,
+    pub model_result_ref: ObjectRef,
+    pub model_outcome_ref: ObjectRef,
+    pub error: crate::error::ProtocolError,
+}
+
+/// Positive evidence that the original request cannot still produce a result.
+/// A transport error, cancelled local future or generic provider failure is NOT evidence.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SubjectRetryEvidence {
+    pub request_id: EntityId,
+    pub fact: InferenceRetryFact,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum InferenceRetryFact {
+    NeverDispatched,
+    ProviderRejected { http_status: u16 },
+}
+
+impl SubjectRetryEvidence {
+    pub fn permits_retry(&self, request_id: Option<EntityId>) -> bool {
+        request_id == Some(self.request_id)
+            && matches!(
+                self.fact,
+                InferenceRetryFact::NeverDispatched
+                    | InferenceRetryFact::ProviderRejected { http_status: 429 }
+            )
+    }
 }
 
 /// TaskWait — child wait record. SPEC §41.5
@@ -221,7 +269,10 @@ pub struct TaskWait {
 /// StepDecision — the committed decision for one subject step. SPEC §41.5
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StepDecision {
+    pub schema_version: u32,
     pub step_id: EntityId,
+    pub output: crate::output::ParsedOutput,
+    pub identity_intent: Option<crate::identity::IdentityIntent>,
     pub input_plan_ref: ObjectRef,
     pub model_result_ref: Option<ObjectRef>,
     pub applied_steering_refs: Vec<ObjectRef>,
@@ -265,7 +316,7 @@ pub enum PolicyKind {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PublicationIntent {
     pub intent_id: EntityId,
-    pub target: String,
+    pub target: crate::output::PublicationTarget,
     pub content: String,
     pub reply_grant_id: Option<EntityId>,
 }

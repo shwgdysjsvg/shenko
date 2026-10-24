@@ -8,22 +8,63 @@
   "scope": "All formal requirements and S1–S5; complete product, not only developer release.",
   "upstream_verified": true,
   "branch": "main",
-  "head_commit": "093b417",
-  "pr_url": "https://github.com/cyjin-yl/shenko/pull/3",
+  "head_commit": "9d6c1af980ded1c4e8c7cd4dc24acd7405b92330",
+  "pr_url": "https://github.com/cyjin-yl/shenko/pull/38",
   "claude_session_id": null,
   "active_workers": [],
   "blockers": [],
   "next_actions": [
-    "Use PROMPT.md and community-stack: tracking #4, work packages #5–#26 exist; join current stack rather than restart.",
-    "Deliver GOAL/PROMPT collaboration docs, then resume C01/#6 recovery candidate 291d5a5 with ACK/input-set correctness verification.",
-    "Continue #12 remote execution then #22 second-node join and durable task result transfer.",
-    "Offline contributors do not block continuation from last pushed checkpoint; full S1–S5 still required."
+    "Continue from actual merged C01/C22 product baseline9d6c1af (PR38; child PR41 merged at e7e26a6); complete native durable child admission/handler -> C07/T2 and remaining authority/cancel/residual coordination. This is not full C01/C22 completion.",
+    "Use durable native Pending TaskRecord -> production child admission/handler -> C07/T2, current authority/ancestor cancel/node fencing and residual supervisor; do not add a parallel task/outbox path.",
+    "Historical unknown/unlinked postcommit effects and mixed-ledger provenance remain explicit reconciliation work, never unconditional replay.",
+    "Full physical compute/submission/chunk-stream, production provider query/cancel, QQ/model/child and all remaining S1–S5/7–30-day obligations stay open; #5/#6/#12/#22 remain open.",
+    "C17 PR40 repairs only database ownership and authenticated known-schema E1/T2 separation. A42/A47/A48/A49, physical second-node, election/privacy/full export/image recovery and 7/30-day evidence remain incomplete.",
+    "Preserve offline contributor commits and source fixtures; resume from pushed checkpoints without approval/release gates. All S1–S5 remains required."
   ],
   "last_checkpoint": "docs/governance/HANDOFF.md",
   "upstream": "cyjin-yl/shenko",
   "upstream_url": "https://github.com/cyjin-yl/shenko",
   "upstream_visibility": "public",
   "upstream_default_branch": "main",
-  "upstream_verified_at": "2026-10-23",
-  "notes": "18 workspace packages: 17 library crates under crates/ plus bin/shenko. Verified 2026-10-23 at HEAD fa74614: cargo test --workspace = 26 passed, 0 failed, 0 ignored across 8 crates (shenko-store 11, shenko-wasm 3, shenko-awareness-core 3, shenko-types 2, shenko-channel-napcat 2, shenko-memory 2, shenko-update 2, shenko-ui 1); the other 9 crates have no tests yet. PR #3 is merged. coverage.json: 27 partial / 120 not_assessed / 0 satisfied (147 requirements). Community work ownership updated 2026-10-24; prior test counts remain historical and were not rerun for this doc increment."
+  "upstream_verified_at": "2026-10-25",
+  "notes": "18 workspace packages: 17 library crates under crates/ plus bin/shenko. Verified 2026-10-23 at HEAD fa74614: cargo test --workspace = 26 passed, 0 failed, 0 ignored across 8 crates (shenko-store 11, shenko-wasm 3, shenko-awareness-core 3, shenko-types 2, shenko-channel-napcat 2, shenko-memory 2, shenko-update 2, shenko-ui 1); the other 9 crates have no tests yet. PR #3 is merged. coverage.json: 27 partial / 120 not_assessed / 0 satisfied (147 requirements). Community work ownership updated 2026-10-24; prior test counts remain historical and were not rerun for this doc increment.",
+  "current_checkpoint": {
+    "work_ids": [
+      "C01",
+      "C22"
+    ],
+    "issues": [
+      6,
+      5
+    ],
+    "child_pr": 41,
+    "child_reviewed_head": "2529968b56c92dcd044db3596628f6a5b0d04d60",
+    "child_merge": "e7e26a6bd799584b98982cb859da3328cf0634e7",
+    "integration_pr": 38,
+    "main_input": "011cce9b81cb3a14306c9bd9aae451742f2f6bf2",
+    "product_candidate": "2169615684c30c5e2d8ef76e12090303c781d595",
+    "status": "focused_slice_verified_pushed_and_merged",
+    "full_work_package_complete": false,
+    "full_goal_complete": false,
+    "evidence": "docs/evidence/c01-committed-intent-handoff-20261025.json",
+    "delivered_pr_head": "5c8cb8c3a00d37ab8e0fcb3b5c2501ae38c4cd0b",
+    "merge_commit": "9d6c1af980ded1c4e8c7cd4dc24acd7405b92330",
+    "remote_main_observed_at_checkpoint": "9d6c1af980ded1c4e8c7cd4dc24acd7405b92330"
+  },
+  "checkpoints": {
+    "previous_C17": {
+      "work_id": "C17",
+      "issue": 22,
+      "pr": 40,
+      "git_base": "04c09a4051ba8641ef50265ee572aa373ab453bc",
+      "product_commit": "453fff7e754e46af920dc7fcbc46c9321f41d819",
+      "status": "focused_verified_pushed_and_merged",
+      "full_work_package_complete": false,
+      "full_goal_complete": false,
+      "evidence": "docs/evidence/c17-ownership-evidence-repair-20261025.json",
+      "delivered_pr_head": "b17ec86f65ec7e082de74efec356c68e3a28f643",
+      "merge_commit": "d593acfff33f1fa0f881be2497ee47f6784f396d",
+      "remote_main_observed_at_checkpoint": "d593acfff33f1fa0f881be2497ee47f6784f396d"
+    }
+  }
 }

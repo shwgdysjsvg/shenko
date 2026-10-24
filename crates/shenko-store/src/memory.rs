@@ -119,7 +119,8 @@ impl Store {
         entry: &MemoryEntry,
         intent_id: Option<EntityId>,
     ) -> Result<CommitReceipt, ShenkoError> {
-        self.ledger.with_mutation(|| self.try_commit_entry(entry, intent_id), |_| true)
+        self.ledger
+            .with_mutation(|| self.try_commit_entry(entry, intent_id), |_| true)
     }
 
     fn try_commit_entry(
@@ -127,18 +128,45 @@ impl Store {
         entry: &MemoryEntry,
         intent_id: Option<EntityId>,
     ) -> Result<CommitReceipt, ShenkoError> {
-        let seq = {
-            let mut s = self.ledger.next_seq.lock();
-            let cur = *s;
-            *s = s.next();
-            cur
-        };
-
-        let conn = self.ledger.conn.lock();
+        let mut conn = self.ledger.conn.lock();
         let tx = conn
-            .unchecked_transaction()
+            .transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)
+            .map_err(|e| ShenkoError::storage(e.to_string()))?;
+        let seq = self.ledger.allocate_seq(&tx)?;
+
+        Self::write_memory_entry(&tx, entry, intent_id, seq)?;
+
+        tx.execute(
+            "INSERT INTO commit_log (ledger_id, seq, incarnation, entity_count)
+             VALUES (?1,?2,?3,1)",
+            params![
+                self.ledger.ledger_id().to_string(),
+                seq.0 as i64,
+                self.capabilities.incarnation.to_string(),
+            ],
+        )
+        .map_err(|e| ShenkoError::storage(e.to_string()))?;
+
+        tx.commit()
             .map_err(|e| ShenkoError::storage(e.to_string()))?;
 
+        Ok(CommitReceipt {
+            commit_ref: CommitRef::new(self.ledger.ledger_id(), seq),
+            durability_profile: DurabilityProfile::PowerLossLocal,
+            store_incarnation: self.capabilities.incarnation,
+            updated: vec![UpdatedEntity {
+                entity_id: entry.entry_id,
+                record_revision: RecordRevision(entry.record_revision),
+            }],
+        })
+    }
+
+    pub(crate) fn write_memory_entry(
+        tx: &rusqlite::Transaction<'_>,
+        entry: &MemoryEntry,
+        intent_id: Option<EntityId>,
+        seq: shenko_types::ids::LedgerSeq,
+    ) -> Result<(), ShenkoError> {
         // A true upsert, not INSERT OR REPLACE: REPLACE deletes the conflicting
         // row without firing DELETE triggers (unless recursive_triggers is on),
         // which would leave the old text in the FTS index as a stale orphan.
@@ -187,33 +215,13 @@ impl Store {
             .map_err(|e| ShenkoError::storage(e.to_string()))?;
         }
 
-        tx.execute(
-            "INSERT INTO commit_log (ledger_id, seq, incarnation, entity_count)
-             VALUES (?1,?2,?3,1)",
-            params![
-                self.ledger.ledger_id().to_string(),
-                seq.0 as i64,
-                self.capabilities.incarnation.to_string(),
-            ],
-        )
-        .map_err(|e| ShenkoError::storage(e.to_string()))?;
-
-        tx.commit().map_err(|e| ShenkoError::storage(e.to_string()))?;
-
-        Ok(CommitReceipt {
-            commit_ref: CommitRef::new(self.ledger.ledger_id(), seq),
-            durability_profile: DurabilityProfile::PowerLossLocal,
-            store_incarnation: self.capabilities.incarnation,
-            updated: vec![UpdatedEntity {
-                entity_id: entry.entry_id,
-                record_revision: RecordRevision(entry.record_revision),
-            }],
-        })
+        Ok(())
     }
 
     /// Persist an accepted intent (state = "accepted") before it is processed.
     pub fn insert_memory_intent(&self, rec: &MemoryIntentRecord) -> Result<(), ShenkoError> {
-        self.ledger.with_mutation(|| self.try_insert_memory_intent(rec), |_| true)
+        self.ledger
+            .with_mutation(|| self.try_insert_memory_intent(rec), |_| true)
     }
 
     fn try_insert_memory_intent(&self, rec: &MemoryIntentRecord) -> Result<(), ShenkoError> {
@@ -256,29 +264,18 @@ impl Store {
     }
 
     /// Mark an intent failed with a human-readable reason.
-    pub fn fail_memory_intent(
-        &self,
-        intent_id: EntityId,
-        reason: &str,
-    ) -> Result<(), ShenkoError> {
-        self.ledger.with_mutation(|| self.try_fail_memory_intent(intent_id, reason), |_| true)
+    pub fn fail_memory_intent(&self, intent_id: EntityId, reason: &str) -> Result<(), ShenkoError> {
+        self.ledger
+            .with_mutation(|| self.try_fail_memory_intent(intent_id, reason), |_| true)
     }
 
-    fn try_fail_memory_intent(
-        &self,
-        intent_id: EntityId,
-        reason: &str,
-    ) -> Result<(), ShenkoError> {
+    fn try_fail_memory_intent(&self, intent_id: EntityId, reason: &str) -> Result<(), ShenkoError> {
         let conn = self.ledger.conn.lock();
         conn.execute(
             "UPDATE memory_intents
                 SET state='failed', reason=?2, updated_at_ms=?3
               WHERE intent_id=?1",
-            params![
-                intent_id.to_string(),
-                reason,
-                Utc::now().timestamp_millis(),
-            ],
+            params![intent_id.to_string(), reason, Utc::now().timestamp_millis(),],
         )
         .map_err(|e| ShenkoError::storage(e.to_string()))?;
         Ok(())
@@ -522,7 +519,8 @@ mod tests {
             // trigger and append a row behind the index's back.
             {
                 let conn = store.ledger.conn.lock();
-                conn.execute_batch("DROP TRIGGER memory_entries_ai;").unwrap();
+                conn.execute_batch("DROP TRIGGER memory_entries_ai;")
+                    .unwrap();
                 conn.execute(
                     "INSERT INTO memory_entries
                         (entry_id, agent_id, kind, content, created_at_ms)
@@ -535,7 +533,11 @@ mod tests {
 
         let store = Store::open(db, cas).unwrap();
         let hits = store.search_memory("lost", 10).unwrap();
-        assert_eq!(hits.len(), 1, "reopening should rebuild the stale FTS index");
+        assert_eq!(
+            hits.len(),
+            1,
+            "reopening should rebuild the stale FTS index"
+        );
         assert_eq!(hits[0].entry_id, lost);
         let _ = std::fs::remove_dir_all(&dir);
     }

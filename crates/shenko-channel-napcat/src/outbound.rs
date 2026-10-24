@@ -16,7 +16,6 @@ use std::sync::Arc;
 use chrono::{DateTime, Utc};
 use parking_lot::Mutex;
 use serde::{Deserialize, Serialize};
-use tracing::warn;
 
 use shenko_store::store::Store;
 use shenko_types::commit::CommitRef;
@@ -26,7 +25,6 @@ use shenko_types::operation::{
     AuthorityRef, EffectStatus, OperationContractRef, OperationOutcome, OperationRecord,
     OperationState, ResourceBindings,
 };
-use shenko_types::store::WriteBatch;
 
 /// Which OneBot action this operation performs.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -95,7 +93,12 @@ impl OutboundOperation {
     /// no user task for a channel reply, so the task component is nil and the
     /// echo token makes the key unique.
     pub fn logical_key(&self) -> String {
-        format!("qq.{}:{}:{}", self.kind.as_str(), self.target, self.echo_token)
+        format!(
+            "qq.{}:{}:{}",
+            self.kind.as_str(),
+            self.target,
+            self.echo_token
+        )
     }
 }
 
@@ -117,18 +120,28 @@ pub struct OutboundLedger {
 }
 
 impl Default for OutboundLedger {
-    fn default() -> Self { Self::new() }
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl OutboundLedger {
     /// In-memory only — used by tests and by transports without a store.
     pub fn new() -> Self {
-        Self { ops: Mutex::new(HashMap::new()), store: None, account: 0 }
+        Self {
+            ops: Mutex::new(HashMap::new()),
+            store: None,
+            account: 0,
+        }
     }
 
     /// Durable ledger writing `OperationRecord`s into the shared store.
     pub fn with_store(store: Arc<Store>) -> Self {
-        Self { ops: Mutex::new(HashMap::new()), store: Some(store), account: 0 }
+        Self {
+            ops: Mutex::new(HashMap::new()),
+            store: Some(store),
+            account: 0,
+        }
     }
 
     pub fn with_account(mut self, account: u64) -> Self {
@@ -140,77 +153,145 @@ impl OutboundLedger {
         self.ops.lock().get(&operation_id).cloned()
     }
 
-    /// Record the intent **before** sending. Returns `Err` when durability
-    /// failed; the caller must then not send the message.
-    pub fn record_intent(&self, op: &OutboundOperation) -> anyhow::Result<()> {
+    /// T1 through the shared Task/Operation service. Only `true` authorizes
+    /// the caller to send. Repeated admission, including after reopen, is a read.
+    pub fn record_intent(&self, op: &OutboundOperation) -> anyhow::Result<bool> {
         if let Some(store) = &self.store {
-            persist(
-                store,
-                self.account,
-                op,
-                OperationState::Prepared,
-                None,
-                EffectStatus::None,
-                RecordRevision(0),
-            )?;
+            let intent = store.subject_publication(op.operation_id)?;
+            let target = match intent.target {
+                shenko_types::output::PublicationTarget::QqGroup(id) => {
+                    (OutboundKind::SendGroup, id)
+                }
+                shenko_types::output::PublicationTarget::QqPrivate(id) => {
+                    (OutboundKind::SendPrivate, id)
+                }
+            };
+            anyhow::ensure!(
+                target == (op.kind, op.target)
+                    && intent.content == op.message
+                    && op.echo_token == op.operation_id.to_string(),
+                "publication_payload_conflict"
+            );
+            let Some(ctx) = store.claim_subject_publication(op.operation_id)? else {
+                return Ok(false);
+            };
+            let mut record = operation_record(store, self.account, op)?;
+            record.task_id = ctx.task_id;
+            record.authority_ref.delegation_id = ctx.task_id;
+            record.authority_ref.decision_ref = store
+                .external_task(ctx.task_id)?
+                .created_by_step_id
+                .unwrap();
+            record.state = OperationState::InFlight;
+            let mut attempt = shenko_types::operation::AttemptRecord {
+                record_schema_version: 1,
+                attempt_id: EntityId::new(),
+                operation_id: op.operation_id,
+                attempt_no: 1,
+                invocation_id: ctx.invocation_id,
+                worker_id: ctx.worker_id,
+                node_id: ctx.node_id,
+                epoch: ctx.epoch,
+                implementation_ref: record.contract_ref.receipt_reader_ref.clone(),
+                dispatch_stage: shenko_types::operation::AttemptDispatchStage::Armed,
+                armed_commit: record.prepared_commit,
+                provider_handle: None,
+                provider_idempotency: None,
+                transport_ref: Some(record.resource_bindings_ref.clone()),
+                started_at: None,
+                last_observed_at: None,
+                final_receipt_id: None,
+            };
+            if store
+                .arm_external_operation(&ctx, &mut record, &mut attempt)?
+                .is_some()
+            {
+                return Ok(false);
+            }
+        } else if let Some(old) = self.ops.lock().get(&op.operation_id) {
+            anyhow::ensure!(
+                old.kind == op.kind && old.target == op.target && old.message == op.message,
+                "publication_payload_conflict"
+            );
+            return Ok(false);
         }
         self.ops.lock().insert(op.operation_id, op.clone());
-        Ok(())
+        Ok(true)
     }
 
-    /// Record the provider's answer. A non-zero retcode is a *resolved*
-    /// failure, not an unknown effect.
-    pub fn record_ack(&self, operation_id: EntityId, retcode: i64) -> anyhow::Result<()> {
-        let (op, revision) = {
-            let mut ops = self.ops.lock();
-            let Some(op) = ops.get_mut(&operation_id) else {
-                return Ok(());
-            };
-            op.state = OutboundState::Acked { retcode };
-            (op.clone(), self.next_revision(operation_id))
-        };
-
-        if let Some(store) = &self.store {
-            let (outcome, effect) = if retcode == 0 {
-                (Some(OperationOutcome::Succeeded), EffectStatus::Complete)
+    /// E1 retains the complete provider response, including platform message ID.
+    /// It is valid even when the callback's dispatcher has lost ownership.
+    pub fn record_response(
+        &self,
+        id: EntityId,
+        receipt: &crate::client::SendReceipt,
+    ) -> anyhow::Result<()> {
+        let success = receipt.is_success();
+        self.evidence(
+            id,
+            serde_json::to_value(receipt)?,
+            Some(if success {
+                OperationOutcome::Succeeded
             } else {
-                (Some(OperationOutcome::Failed), EffectStatus::None)
+                OperationOutcome::Failed
+            }),
+            if success {
+                EffectStatus::Complete
+            } else {
+                EffectStatus::None
+            },
+        )?;
+        if let Some(op) = self.ops.lock().get_mut(&id) {
+            op.state = OutboundState::Acked {
+                retcode: receipt.retcode,
             };
-            persist(
-                store,
-                self.account,
-                &op,
-                OperationState::Resolved,
-                outcome,
-                effect,
-                revision,
-            )?;
         }
         Ok(())
     }
 
-    /// The response window elapsed (or the socket dropped): the effect is
-    /// unknown. SPEC §35.6 — reconcile, never blind-resend.
-    pub fn record_unknown(&self, operation_id: EntityId) -> anyhow::Result<()> {
-        let (op, revision) = {
-            let mut ops = self.ops.lock();
-            let Some(op) = ops.get_mut(&operation_id) else {
-                return Ok(());
-            };
+    pub fn record_unknown(&self, id: EntityId, reason: &str) -> anyhow::Result<()> {
+        self.evidence(
+            id,
+            serde_json::json!({"transport_error":reason,"effect":"unknown"}),
+            None,
+            EffectStatus::Unknown,
+        )?;
+        if let Some(op) = self.ops.lock().get_mut(&id) {
             op.state = OutboundState::Unknown { since: Utc::now() };
-            (op.clone(), self.next_revision(operation_id))
-        };
+        }
+        Ok(())
+    }
 
+    fn evidence(
+        &self,
+        id: EntityId,
+        raw: serde_json::Value,
+        outcome: Option<OperationOutcome>,
+        effect: EffectStatus,
+    ) -> anyhow::Result<()> {
         if let Some(store) = &self.store {
-            persist(
-                store,
-                self.account,
-                &op,
-                OperationState::Reconciling,
-                None,
-                EffectStatus::Unknown,
-                revision,
-            )?;
+            let attempt = store.external_operation_attempt(id)?;
+            let object = seal_json(store, "qq_outbound_receipts", &raw)?;
+            let ev = shenko_types::evidence::EvidenceReceipt {
+                record_schema_version: 1,
+                receipt_id: EntityId::new(),
+                operation_id: Some(id),
+                attempt_id: Some(attempt.attempt_id),
+                source_id: "napcat".into(),
+                source_instance_id: format!("qq:{}", self.account),
+                source_event_key: None,
+                producer_epoch: Some(attempt.epoch.0),
+                producer_schema_version: Some("onebot-v11".into()),
+                raw_ref: object,
+                decoder_ref: Some(attempt.implementation_ref.clone()),
+                decode_status: shenko_types::evidence::DecodeStatus::Decoded,
+                observation_level: outcome
+                    .map(|_| shenko_types::evidence::ObservationLevel::ProviderAccepted),
+                normalized_ref: None,
+                observed_at: Some(Utc::now()),
+                received_commit: attempt.armed_commit,
+            };
+            store.record_external_evidence(id, attempt.attempt_id, ev, outcome, effect)?;
         }
         Ok(())
     }
@@ -231,17 +312,6 @@ impl OutboundLedger {
             .lock()
             .get(&operation_id)
             .map(|op| ack_from_state(&op.state, op.created_at)))
-    }
-
-    fn next_revision(&self, operation_id: EntityId) -> RecordRevision {
-        if let Some(store) = &self.store {
-            match store.get_operation(operation_id) {
-                Ok(Some(record)) => return record.record_revision.next(),
-                Ok(None) => {}
-                Err(e) => warn!(%operation_id, err=%e, "read operation revision failed"),
-            }
-        }
-        RecordRevision(1)
     }
 }
 
@@ -270,7 +340,11 @@ fn ack_from_record(record: &OperationRecord) -> AckState {
     AckState::Unknown { since: Utc::now() }
 }
 
-fn seal_json(store: &Store, namespace: &str, value: &serde_json::Value) -> anyhow::Result<ObjectRef> {
+fn seal_json(
+    store: &Store,
+    namespace: &str,
+    value: &serde_json::Value,
+) -> anyhow::Result<ObjectRef> {
     let bytes = serde_json::to_vec(value)?;
     let sealed = store
         .cas
@@ -279,21 +353,16 @@ fn seal_json(store: &Store, namespace: &str, value: &serde_json::Value) -> anyho
     Ok(sealed.object)
 }
 
-fn persist(
+fn operation_record(
     store: &Store,
     account: u64,
     op: &OutboundOperation,
-    state: OperationState,
-    outcome: Option<OperationOutcome>,
-    effect: EffectStatus,
-    revision: RecordRevision,
-) -> anyhow::Result<()> {
+) -> anyhow::Result<OperationRecord> {
     let payload = serde_json::json!({
         "kind": op.kind.as_str(),
         "target": op.target.to_string(),
         "message": op.message,
         "echo_token": op.echo_token,
-        "created_at": op.created_at.to_rfc3339(),
     });
     let input = seal_json(store, "qq_outbound_input", &payload)?;
 
@@ -307,7 +376,13 @@ fn persist(
     })?;
     let resource_bindings_ref = store
         .cas
-        .seal_object(&bindings, "application/json", "qq_outbound_bindings", "json", 1)
+        .seal_object(
+            &bindings,
+            "application/json",
+            "qq_outbound_bindings",
+            "json",
+            1,
+        )
         .map_err(|e| anyhow::anyhow!("CAS seal resource bindings: {e}"))?
         .object;
 
@@ -329,7 +404,7 @@ fn persist(
     let record = OperationRecord {
         record_schema_version: 1,
         operation_id: op.operation_id,
-        record_revision: revision,
+        record_revision: RecordRevision(0),
         // Channel replies are not tied to a user task.
         task_id: EntityId::nil(),
         logical_key: op.logical_key(),
@@ -340,11 +415,13 @@ fn persist(
         input_digest: input.digest.clone(),
         contract_ref: OperationContractRef {
             plugin_id: EntityId::nil(),
-            artifact_digest: Digest::blake3(b"shenko-channel-napcat"),
-            contract_digest: Digest::blake3(b"onebot-v11/send"),
+            artifact_digest: Digest::blake3(include_bytes!("outbound.rs")),
+            contract_digest: Digest::blake3(
+                b"shenko.napcat/onebot11-send/1;no-blind-replay;provider-accepted-not-read",
+            ),
             receipt_reader_ref: VersionedRef {
                 artifact: ArtifactRef {
-                    digest: Digest::blake3(b"shenko-channel-napcat"),
+                    digest: Digest::blake3(include_bytes!("outbound.rs")),
                     locator: "crates/shenko-channel-napcat".to_string(),
                 },
                 symbol: "SendReceipt".to_string(),
@@ -366,10 +443,10 @@ fn persist(
         acceptance_predicate_ref,
         retry_contract_ref,
         checkpoint_scope_ref: None,
-        state,
-        outcome,
+        state: OperationState::InFlight,
+        outcome: None,
         outcome_conflict: false,
-        effect_status: effect,
+        effect_status: EffectStatus::Unknown,
         retry_of: None,
         compensates: None,
         possible_duplicate_of: vec![],
@@ -379,12 +456,7 @@ fn persist(
         evidence_through: None,
     };
 
-    let mut batch = WriteBatch::new();
-    batch.operation_upserts.push(record);
-    store
-        .commit(batch)
-        .map_err(|e| anyhow::anyhow!("commit outbound operation: {e}"))?;
-    Ok(())
+    Ok(record)
 }
 
 #[cfg(test)]
@@ -398,14 +470,30 @@ mod tests {
         let id = op.operation_id;
 
         ledger.record_intent(&op).expect("record intent");
-        assert_eq!(ledger.get(id).expect("op present").state, OutboundState::Sent);
+        assert_eq!(
+            ledger.get(id).expect("op present").state,
+            OutboundState::Sent
+        );
         assert_eq!(
             ledger.reconcile(id).expect("reconcile"),
-            Some(AckState::Unknown { since: op.created_at }),
+            Some(AckState::Unknown {
+                since: op.created_at
+            }),
             "before the ack the external effect is unknown"
         );
 
-        ledger.record_ack(id, 0).expect("record ack");
+        ledger
+            .record_response(
+                id,
+                &crate::client::SendReceipt {
+                    echo: id.to_string(),
+                    status: "ok".into(),
+                    retcode: 0,
+                    data: serde_json::json!({"fixture":true}),
+                    message: None,
+                },
+            )
+            .expect("record ack");
         assert_eq!(
             ledger.get(id).expect("op present").state,
             OutboundState::Acked { retcode: 0 }
@@ -423,7 +511,9 @@ mod tests {
         let id = op.operation_id;
 
         ledger.record_intent(&op).expect("record intent");
-        ledger.record_unknown(id).expect("record unknown");
+        ledger
+            .record_unknown(id, "fixture disconnect")
+            .expect("record unknown");
 
         let state = ledger.get(id).expect("op present").state;
         assert!(matches!(state, OutboundState::Unknown { .. }));

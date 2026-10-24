@@ -20,6 +20,12 @@ Claude Code采用实际 `--dangerously-skip-permissions` 启动方式，模型�
 
 认领是提示不是排他锁。朋友离线时从最后已推SHA建 `continue/<work-id>/<session>`，保留原作者/提交/PR并继续，不等交还、释放、批准或在线；不强推对方分支。未知外部effects保留原identity先对账，不因换人盲重发。真实访问控制/凭据/证据如实处理，不捏造批准或测试成功。
 
+## 署名与任务分配
+
+主控本方新提交的 Author/Committer 使用真实 GitHub 身份 `cyjin-yl <19223209+cyjin-yl@users.noreply.github.com>`，不误用容器 `ezra` 或 AI 作主作者；朋友/社区开发者使用各自真实 GitHub 身份。AI 参与只记真实共作者尾注。保留朋友的原始 commit、作者与合并父图，后续正常 merge 获取 credit，不 squash/reset-author 成主控独占贡献，也不要求继续维护已被吸收的来源 PR。具体来源及已发表历史边界见 [CONTRIBUTORS.md](CONTRIBUTORS.md)。
+
+开工先读实际 assignees、最新评论和关联 PR，与现有开发者对齐具体 issue/切片、模块/文件边界、base SHA、branch/PR 与下一动作，并以真实账号 assign + comment；不能只说“收到”或同时写同一候选。对齐用于避免重复和覆盖，不是排他锁、签字或租约释放 gate；接口划清后自主并行，离线仍可从最后已推 checkpoint 保留原提交接续。
+
 ## 依赖图与stacked PR
 
 22个 [工作包](docs/plans/active/community-stack.md) 对应已发布issues #5–#26；[JSON](docs/plans/active/community-stack.json) 保留147R/55B/216case归属，新增要求继续入图，映射不表示已经完成。

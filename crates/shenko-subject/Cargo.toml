@@ -6,6 +6,9 @@ authors.workspace = true
 license.workspace = true
 
 [dependencies]
+pulldown-cmark = { version = "0.13", default-features = false }
+cordis-core.workspace = true
+shenko-identity = { path = "../shenko-identity" }
 shenko-types = { path = "../shenko-types" }
 shenko-kernel = { path = "../shenko-kernel" }
 shenko-store = { path = "../shenko-store" }

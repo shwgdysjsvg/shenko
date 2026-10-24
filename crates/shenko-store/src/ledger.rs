@@ -1,33 +1,70 @@
 //! Ledger — single mutation line per local store. SPEC §41.2.1
-use std::sync::Arc;
-use parking_lot::Mutex;
-use rusqlite::{Connection, params};
 use anyhow::Result;
+use parking_lot::Mutex;
+use rusqlite::{Connection, OptionalExtension, TransactionBehavior, params};
+use std::sync::Arc;
 use tracing::instrument;
 
 use shenko_types::commit::{CommitReceipt, CommitRef, DurabilityProfile, UpdatedEntity};
+use shenko_types::error::ShenkoError;
 use shenko_types::ids::{EntityId, LedgerSeq};
 use shenko_types::store::WriteBatch;
-use shenko_types::error::ShenkoError;
 
 pub struct Ledger {
     pub(crate) conn: Arc<Mutex<Connection>>,
     incarnation: EntityId,
     ledger_id: EntityId,
-    pub(crate) next_seq: Mutex<LedgerSeq>,
     mutation_open: Mutex<bool>,
 }
 
 impl Ledger {
-    pub fn new(conn: Arc<Mutex<Connection>>, incarnation: EntityId) -> Self {
-        let ledger_id = EntityId::new();
-        Self {
+    pub fn new(conn: Arc<Mutex<Connection>>, incarnation: EntityId) -> Result<Self> {
+        let ledger_id = {
+            let mut c = conn.lock();
+            let tx = c.transaction_with_behavior(TransactionBehavior::Immediate)?;
+            // 旧库沿用第一条真实提交的身份；新库在首笔业务写入前固定身份。
+            let previous: Option<String> = tx
+                .query_row(
+                    "SELECT ledger_id FROM commit_log ORDER BY id LIMIT 1",
+                    [],
+                    |r| r.get(0),
+                )
+                .optional()?;
+            let candidate = previous.unwrap_or_else(|| EntityId::new().to_string());
+            tx.execute(
+                "INSERT OR IGNORE INTO ledger_identity (singleton, ledger_id) VALUES (1, ?1)",
+                [&candidate],
+            )?;
+            let id: String = tx.query_row(
+                "SELECT ledger_id FROM ledger_identity WHERE singleton=1",
+                [],
+                |r| r.get(0),
+            )?;
+            let id = id.parse::<EntityId>()?;
+            tx.commit()?;
+            id
+        };
+        Ok(Self {
             conn,
             incarnation,
             ledger_id,
-            next_seq: Mutex::new(LedgerSeq(1)),
             mutation_open: Mutex::new(true),
-        }
+        })
+    }
+
+    // 必须在同一 IMMEDIATE 写事务内调用，不能先分配再等待写锁。
+    pub(crate) fn allocate_seq(
+        &self,
+        tx: &rusqlite::Transaction<'_>,
+    ) -> Result<LedgerSeq, ShenkoError> {
+        let seq: i64 = tx
+            .query_row(
+                "SELECT COALESCE(MAX(seq), 0) + 1 FROM commit_log",
+                [],
+                |r| r.get(0),
+            )
+            .map_err(|e| ShenkoError::storage(e.to_string()))?;
+        Ok(LedgerSeq(seq as u64))
     }
 
     #[instrument(skip(self, batch))]
@@ -36,38 +73,18 @@ impl Ledger {
     }
 
     fn try_commit(&self, batch: WriteBatch) -> Result<CommitReceipt, ShenkoError> {
-        if batch.is_empty() {
-            let seq = {
-                let mut seq = self.next_seq.lock();
-                let cur = *seq;
-                *seq = seq.next();
-                cur
-            };
-            return Ok(CommitReceipt {
-                commit_ref: CommitRef::new(self.ledger_id, seq),
-                durability_profile: DurabilityProfile::PowerLossLocal,
-                store_incarnation: self.incarnation,
-                updated: vec![],
-            });
-        }
-
-        let seq = {
-            let mut seq = self.next_seq.lock();
-            let cur = *seq;
-            *seq = seq.next();
-            cur
-        };
-
+        let mut conn = self.conn.lock();
+        let tx = conn
+            .transaction_with_behavior(TransactionBehavior::Immediate)
+            .map_err(|e| ShenkoError::storage(e.to_string()))?;
+        let seq = self.allocate_seq(&tx)?;
         let commit_ref = CommitRef::new(self.ledger_id, seq);
         let mut updated = vec![];
 
-        let conn = self.conn.lock();
-        let tx = conn.unchecked_transaction()
-            .map_err(|e| ShenkoError::storage(e.to_string()))?;
-
+        // 本次只统一序号/写锁；下列通用 upsert 仍缺业务 revision CAS 和 writer 失效协议。
         for task in &batch.task_upserts {
-            let json = serde_json::to_string(task)
-                .map_err(|e| ShenkoError::storage(e.to_string()))?;
+            let json =
+                serde_json::to_string(task).map_err(|e| ShenkoError::storage(e.to_string()))?;
             tx.execute(
                 "INSERT OR REPLACE INTO tasks (task_id, record_revision, data, updated_commit_seq)
                  VALUES (?1, ?2, ?3, ?4)",
@@ -77,7 +94,8 @@ impl Ledger {
                     json,
                     seq.0 as i64,
                 ],
-            ).map_err(|e| ShenkoError::storage(e.to_string()))?;
+            )
+            .map_err(|e| ShenkoError::storage(e.to_string()))?;
             updated.push(UpdatedEntity {
                 entity_id: task.task_id,
                 record_revision: task.record_revision,
@@ -85,8 +103,8 @@ impl Ledger {
         }
 
         for op in &batch.operation_upserts {
-            let json = serde_json::to_string(op)
-                .map_err(|e| ShenkoError::storage(e.to_string()))?;
+            let json =
+                serde_json::to_string(op).map_err(|e| ShenkoError::storage(e.to_string()))?;
             tx.execute(
                 "INSERT OR REPLACE INTO operations (operation_id, record_revision, data, updated_commit_seq)
                  VALUES (?1, ?2, ?3, ?4)",
@@ -100,8 +118,8 @@ impl Ledger {
         }
 
         for att in &batch.attempt_upserts {
-            let json = serde_json::to_string(att)
-                .map_err(|e| ShenkoError::storage(e.to_string()))?;
+            let json =
+                serde_json::to_string(att).map_err(|e| ShenkoError::storage(e.to_string()))?;
             tx.execute(
                 "INSERT OR REPLACE INTO attempts (attempt_id, operation_id, data, updated_commit_seq)
                  VALUES (?1, ?2, ?3, ?4)",
@@ -115,8 +133,8 @@ impl Ledger {
         }
 
         for ev in &batch.evidence_upserts {
-            let json = serde_json::to_string(ev)
-                .map_err(|e| ShenkoError::storage(e.to_string()))?;
+            let json =
+                serde_json::to_string(ev).map_err(|e| ShenkoError::storage(e.to_string()))?;
             tx.execute(
                 "INSERT OR REPLACE INTO evidence_receipts (receipt_id, operation_id, data, updated_commit_seq)
                  VALUES (?1, ?2, ?3, ?4)",
@@ -176,9 +194,11 @@ impl Ledger {
                 self.incarnation.to_string(),
                 updated.len() as i64,
             ],
-        ).map_err(|e| ShenkoError::storage(e.to_string()))?;
+        )
+        .map_err(|e| ShenkoError::storage(e.to_string()))?;
 
-        tx.commit().map_err(|e| ShenkoError::storage(e.to_string()))?;
+        tx.commit()
+            .map_err(|e| ShenkoError::storage(e.to_string()))?;
 
         Ok(CommitReceipt {
             commit_ref,
@@ -198,7 +218,9 @@ impl Ledger {
     ) -> Result<T, E> {
         let mut open = self.mutation_open.lock();
         if !*open {
-            return Err(ShenkoError::storage("writer closed; reopen and query original operation").into());
+            return Err(
+                ShenkoError::storage("writer closed; reopen and query original operation").into(),
+            );
         }
         *open = false;
         let result = write();

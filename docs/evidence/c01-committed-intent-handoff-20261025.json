@@ -1,0 +1,172 @@
+{
+  "schema_version": 1,
+  "work_ids": [
+    "C01",
+    "C22"
+  ],
+  "issues": [
+    6,
+    5
+  ],
+  "case_scope": [
+    "F2",
+    "RT01:committed-intent-handoff-only",
+    "P41-02:loopback-provider-fixture-only",
+    "P41-11:old-owner-evidence-only"
+  ],
+  "full_work_packages_complete": false,
+  "full_goal_complete": false,
+  "reviewed_child": "2529968b56c92dcd044db3596628f6a5b0d04d60",
+  "reviewed_tree": "031d1ff2af036e44d3cab79bfbcc97335f939785",
+  "independent_review": {
+    "verdict": "approved_slice",
+    "findings": [],
+    "snapshot": "host=doescontainer/container=shenko-dev-live/path=/tmp/shenko-c01-intent-review-sND5Yz69",
+    "scope": "Actual read-only producer/S1, store intent/memory/owner/Unknown, T1/E1, NapCat sender/results, runtime supervision and UI replay; not full C01/C22 or unrelated main audit"
+  },
+  "child_pr": 41,
+  "child_merge": "e7e26a6bd799584b98982cb859da3328cf0634e7",
+  "integration_pr": 38,
+  "main_input": "011cce9b81cb3a14306c9bd9aae451742f2f6bf2",
+  "product_candidate": "2169615684c30c5e2d8ef76e12090303c781d595",
+  "product_tree": "eb82254b57687d8356657b9d61c0b3cbb3ed6854",
+  "source_input_sha256": "21b9b617aa46440d0712dd9e28d5e273c2d16b74cbcf50ab2ff482599e766bba",
+  "source_input_algorithm": "sorted tracked Rust, Cargo.toml/Cargo.lock and crates Python/shell helper paths + NUL + bytes + NUL",
+  "source_input_manifest": "/tmp/shenko-c01-integrate-ukwtuqr6/source-inputs.json",
+  "composition_review": {
+    "read_sha": "2169615684c30c5e2d8ef76e12090303c781d595",
+    "scope": "Complete 2529968b..21696156 diff: existing C17 node ownership/evidence repair plus docs; unchanged C01/C22 inputs. No known confirmed blocker for this integration slice; this is not full-product completion."
+  },
+  "commands": [
+    {
+      "command": "flock /tmp/shenko-cargo.lock cargo build --manifest-path /tmp/shenko-c01-integrate-ukwtuqr6/repo/Cargo.toml -p shenko --message-format=json-render-diagnostics",
+      "source": "2169615684c30c5e2d8ef76e12090303c781d595",
+      "env": {
+        "CARGO_BUILD_JOBS": "1",
+        "CARGO_INCREMENTAL": "0",
+        "CARGO_TARGET_DIR": "/tmp/shenko-live-target"
+      },
+      "exit": 0,
+      "log": "/tmp/shenko-c01-integrate-ukwtuqr6/build.log"
+    },
+    {
+      "command": "rustc --edition=2024 reused probe.rs with exact combined Cargo artifact map",
+      "source": "2169615684c30c5e2d8ef76e12090303c781d595",
+      "exit": 0,
+      "command_argv": "/tmp/shenko-c01-integration-f2-jyq00wi7/probe-build-command.json",
+      "log": "/tmp/shenko-c01-integration-f2-jyq00wi7/probe-build.log"
+    },
+    {
+      "command": "python3 -I /tmp/shenko-c01-integration-f2-jyq00wi7/drive.py /tmp/shenko-c01-integration-f2-jyq00wi7",
+      "source": "2169615684c30c5e2d8ef76e12090303c781d595",
+      "exit": 0,
+      "log": "/tmp/shenko-c01-integration-f2-jyq00wi7/journey.log"
+    }
+  ],
+  "journey": {
+    "result": "PASS",
+    "source_sha": "2169615684c30c5e2d8ef76e12090303c781d595",
+    "reused_scenario": "F2 S1 complete, omit all postcommit, then reopen",
+    "real_killed_processes": 2,
+    "prepare_exit": -9,
+    "runtime_exit": -9,
+    "recovery_exit": 0,
+    "wire_send_count": 1,
+    "memory_entries": 1,
+    "intent_states": [
+      [
+        "delegation",
+        "settled"
+      ],
+      [
+        "memory",
+        "settled"
+      ],
+      [
+        "publication",
+        "settled"
+      ]
+    ],
+    "delegated_task": "Pending; no child executed",
+    "attempts": 1,
+    "model_responses": 0,
+    "successor_http_requests": 1,
+    "late_receipt": "out-of-band loopback provider fixture query/injection via old-owner E1; not real QQ",
+    "stable_ui_websocket_replay": true,
+    "inputs": {
+      "source_sha": "2169615684c30c5e2d8ef76e12090303c781d595",
+      "composition_source_inputs": "/tmp/shenko-c01-integrate-ukwtuqr6/source-inputs.json",
+      "reused_probe_source_sha": "2529968b56c92dcd044db3596628f6a5b0d04d60",
+      "probe_sha256": "4fb3bbaaf9b74f63e31fb4bf605161d0ab3f44cc2cc98e0a65397e2056542512",
+      "driver_sha256": "3d9724858cb9d8e5fac3686e285ca969ecff1c3489769704284504e9921ee37d",
+      "runtime_sha256": "d03813d5f1d94029a9145593a84061447c895cd866ffb4d6ff7c9147c74aab8b",
+      "case": "unchanged original F2 process journey; fresh isolated state; no new scenario"
+    },
+    "recovery": {
+      "delegation_state": "pending-not-executed",
+      "intent_count": 3,
+      "memory_state": "committed",
+      "model_calls_during_reconciliation": 0,
+      "old_dispatch_resend": false,
+      "repeat_dispatch_resend": false,
+      "reply_state": "settled-from-late-provider-evidence",
+      "result": "PASS",
+      "scenario": "original F2 S1/postcommit crash, then armed-send crash/reconciliation",
+      "stable_ui_replay": true,
+      "unknown_preserved_on_reopen": true
+    }
+  },
+  "ledger_readback": {
+    "commits": 18,
+    "ledger_ids": 1,
+    "seq": [
+      1,
+      18,
+      18
+    ],
+    "writer_incarnations": 5
+  },
+  "artifacts_sha256": {
+    "inputs.json": "a18051c043b629d11ba9b0360e7c3f854c5bfacae43c3fdec2d25c4b0f78863c",
+    "probe.rs": "4fb3bbaaf9b74f63e31fb4bf605161d0ab3f44cc2cc98e0a65397e2056542512",
+    "drive.py": "3d9724858cb9d8e5fac3686e285ca969ecff1c3489769704284504e9921ee37d",
+    "result.json": "da06f26a75ef7f212e734bca9097d2cb9f324d270a6899850f6bcdf0811e4114",
+    "journey.log": "3197eee6afe82c0cd11b6d308aa9205c1792cf23e2ad979f72f7cd377caf0a8c",
+    "recover.log": "7fa0c7f82bc9d28d9513240507b8af1442f4545850ece575ad08f6c3677acb66",
+    "shenko": "d03813d5f1d94029a9145593a84061447c895cd866ffb4d6ff7c9147c74aab8b",
+    "provider-frames.json": "3dac70ec9e11a603bd2644738f87fd3cf92cc814a93bbe9f2c2c990f3d5c464a",
+    "late-receipt.json": "e676376e330a281e1830349040e26b54e022bf0dcd0015008cbac3831d6f9b45",
+    "ui-replay.json": "b147e1954e97bd3636f320e1a620583f36ebb3402cbea37bbabd3bb1eef430a9",
+    "build.log": "791ffc2c94d3f4176b1fcb320bfa7de75e81886ba969c625ea0b9e9e8fbecb7c"
+  },
+  "prior_evidence": {
+    "path": "/tmp/shenko-c01-f2-83kqs2y8",
+    "exact_child_build_and_C22_R0_length_binding_shutdown_journey": "exit0 on 2529968b",
+    "existing_bin_tests": "2 passed on 2529968b",
+    "earlier_existing_suites": "27 passed only on source hashes recorded in /tmp/shenko-c01-intent-tests-20261025.log; not claimed rerun on final SHA",
+    "reverified_artifact_hashes": 11
+  },
+  "boundaries": [
+    "Real process SIGKILL/reopen, SQLite persistence, loopback WS send and UI WS readback; not OS crash/power-loss or production QQ/model.",
+    "S1 fixture calls real Store transaction; later reconciliation uses the reused Store/probe. Late receipt is explicit out-of-band provider-fixture query/injection, not production provider query.",
+    "Delegation has stable Pending TaskRecord only; no production child/seat execution.",
+    "Armed/Unknown never auto resend; historical unlinked effects need explicit reconciliation. Original raw/receipt and mixed-ledger provenance preserved.",
+    "Durable physical compute, submission/chunk-stream, provider query/cancel, complete child ownership/authority and formal S1–S5 remain open."
+  ],
+  "authorship": "Original seven PR29 commits preserved; wrong-author c62081b/9a4f935/3e6ad79 are not ancestors. New local commits use raw cyjin-yl author and committer with AI coauthor trailer.",
+  "delivery": {
+    "status": "actually_merged_and_independently_read_back",
+    "child_pr": 41,
+    "child_merge": "e7e26a6bd799584b98982cb859da3328cf0634e7",
+    "integration_pr": 38,
+    "delivered_pr_head": "5c8cb8c3a00d37ab8e0fcb3b5c2501ae38c4cd0b",
+    "main_merge": "9d6c1af980ded1c4e8c7cd4dc24acd7405b92330",
+    "main_tree": "1aa5e100f7b40e93054992669a61af7720e636a9",
+    "main_readback": "Authenticated GitHub branches/main plus independent dev-container git fetch agree. Source inputs equal built/replayed 21696156.",
+    "issue6_comment": "https://github.com/cyjin-yl/shenko/issues/6#issuecomment-6388977029",
+    "issue5_comment": "https://github.com/cyjin-yl/shenko/issues/5#issuecomment-6388977315",
+    "checks": 0,
+    "issues_closed": false,
+    "source_pr28": "GitHub now reports merged via original 400c66e after main received the preserved graph; not independently merged bad parent first."
+  }
+}

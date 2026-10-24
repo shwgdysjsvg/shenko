@@ -1,6 +1,53 @@
 # Shenko 开发交接状态
 
-**更新时间：2026-10-25（C07 修复与 C01 独立复核分列；以下明确区分当前与历史证据）**
+**更新时间：2026-10-25（PR41 已 normal merge 父38；C01/C22 F2 整合与历史证据分列）**
+
+## 当前 C01/C22 F2：已独立复核并整合（非完整包完成）
+
+- **真实栈/作者**：[PR41](https://github.com/cyjin-yl/shenko/pull/41) 已从 ready 正常合入 corrected 父38，merge `e7e26a6bd799584b98982cb859da3328cf0634e7`，完整 tree 等于被审查 head `2529968b56c92dcd044db3596628f6a5b0d04d60`（tree `031d1ff2af036e44d3cab79bfbcc97335f939785`）。七个朋友原 commits/作者与父图均保留；wrong-author `3e6ad79` 没有进入新图，旧来源 PR29/34 分支未改写/删除。
+- **独立审查实际完成**：只读 `/tmp/shenko-c01-intent-review-sND5Yz69` 实际读回上述 SHA/tree，检查完整 `29fa07b..2529968b` composition 与 `feab9b6..2529968b` focused implementation，结论 `approved_slice`、findings=[]。不是只启动 reviewer 或创建 clone；不代表完整 C01/C22、生产 child/QQ 或 S1–S5 通过。
+- **整合候选**：normal merge 最新 main `011cce9b81cb3a14306c9bd9aae451742f2f6bf2` 后产品 SHA `2169615684c30c5e2d8ef76e12090303c781d595`；与审查 child 的差异仅已合 C17 node ownership/evidence 修复及 docs。实际读过该 composition，单次 combined build exit0，复用原 F2 进程旅程在此 SHA 原样重跑 exit0。tracked Rust/Cargo/helper source SHA256=`21b9b617aa46440d0712dd9e28d5e273c2d16b74cbcf50ab2ff482599e766bba`，算法及输入路径见[本次证据](../evidence/c01-committed-intent-handoff-20261025.json)。随后只改证据/HANDOFF/任务状态，不把新文档 SHA 冒称重跑产品。
+- **行为/每项恢复**：S1 同事务保存完整不可变 intent、ready/progress；memory 用原 helper 原子提交 entry+settled，一条 entry；delegate 在同笔 S1 交接为稳定 ID 的原生 Pending TaskRecord，不冒充已执行 child；publication 复用 Task/T1/Operation/Attempt/E1/OutboundLedger。两次真实 SIGKILL（S1 后与 armed-send 后），runtime 真实重开后先保留 Unknown；旧 owner 不能再次发，新 owner 由迟到 E1 结算。最终 3 settled handoffs、2 稳定 tasks、1 attempt、**1 wire send**；重复恢复不增发，稳定 UI WS 读回原 step/message/commit。已移除易失 postcommit 执行路径，不保留双执行 fallback。
+- **真实/fixture 边界**：loopback WS 与进程 kill/reopen、SQLite/对象持久读回均真实；S1 由既有 probe 调真实 Store，恢复结算由同一 probe，不伪称完整生产模型旅程。迟到回执是明确的 out-of-band loopback provider-fixture query/injection，非生产 QQ 查询；恢复结算零模型调用/响应，另有一个被阻塞的 successor HTTP 请求。原 C22 R0/length/binding/shutdown 与2个 bin tests 为精确 `2529968b` 的有效证据；27 tests 只属于日志记录的较早输入。本次零新测试函数/独立新场景，无 CI 绿灯或物理双机/掉电声明。
+- **旧 main ledger P1 不再误套本候选**：#6 comment6388656298 对当时 main 的新 ledger_id/seq 重置诊断真实；本栈继承的持久 `ledger_identity`、IMMEDIATE 事务分配序号在正常整合时保留。两套实际 F2 重开数据均为18 commits、1 ledger ID、seq1..18（18 unique）、5 writer incarnations。旧 mixed-ledger 历史原 refs 不改写，不伪造成从来只有一条历史；迁移/历史对账与更广 writer-CAS 合同仍 partial。
+- **实际交付/下一动作**：[PR38](https://github.com/cyjin-yl/shenko/pull/38) 已先从 metadata successor 显式转换为 broader 49-file C01/C22 integration PR（真实 base main011cce9，不称 focused），ready 后正常合入 main：head `5c8cb8c3a00d37ab8e0fcb3b5c2501ae38c4cd0b`、merge/独立读回 `9d6c1af980ded1c4e8c7cd4dc24acd7405b92330`、tree `1aa5e100f7b40e93054992669a61af7720e636a9`。GitHub PR38/41 均实际 MERGED；PR28 随保留父图自动显示 merged（原图 `400c66e`），不是先把有 P1 的旧父独立交 main。全部7个朋友原提交现在确为 main 祖先。GitHub checks=0，不冒称 CI。最终交付见 [#6 comment6388977029](https://github.com/cyjin-yl/shenko/issues/6#issuecomment-6388977029)／[#5 comment6388977315](https://github.com/cyjin-yl/shenko/issues/5#issuecomment-6388977315)。本次后续纯文档 checkpoint 不改变上述产品输入。#6/#5 保持 OPEN。下一独立行为工作是原生 Pending task→真实 child admission/handler→C07/T2、有效 authority/祖先取消/node fencing 与 residual reconciliation supervisor；不是再建一套 task/outbox。
+- **接续资源**：统一 locator `host=doescontainer/container=shenko-dev-live`；自有 repo `/tmp/shenko-c01-integrate-ukwtuqr6/repo`；原证据 `/tmp/shenko-c01-f2-83kqs2y8`；本组合 fresh-state probe/driver/binary/logs/hashes `/tmp/shenko-c01-integration-f2-jyq00wi7`，构建/source manifests `/tmp/shenko-c01-integrate-ukwtuqr6`。原候选、review snapshot、朋友目录、旧数据未共写/删除。Cargo 共享锁、jobs1、incremental0；本阶段未再开 worker。
+
+以下 C17/C07/PR28 段落保留为各自 SHA 的历史 checkpoint；其中“F2/ledger 未修复”不覆盖上方已验证新组合。Unknown 历史 effect、真实 provider 查询/取消协调、完整 child/seat、生产 QQ/模型、durable compute/submission/完整 chunk stream、SQLite WAL-reset/CAS 掉电与 S1–S5/7–30天全部正式余项仍开放。
+
+## C17 PR40 focused repair（2026-10-25；非完整包完成）
+
+- 本轮 assign/comment 身份 cyjin-yl；Git base main `04c09a4051ba8641ef50265ee572aa373ab453bc`，
+  branch `fix/c17-store-ownership-evidence-20261025`，
+  [PR40](https://github.com/cyjin-yl/shenko/pull/40)，产品 `453fff7e754e46af920dc7fcbc46c9321f41d819`。
+  **已实际ready并normal merge**：交付head `b17ec86f65ec7e082de74efec356c68e3a28f643`，merge/独立读回main
+  `d593acfff33f1fa0f881be2497ee47f6784f396d`。该main完整tree等于已测候选；不是仅有本地代码。
+  [实际交付comment](https://github.com/cyjin-yl/shenko/issues/22#issuecomment-6388655564)。GitHub CI checks=0，不冒称CI绿灯。
+- 修复PR37引入的两项P2：未知数据库先immutable只读识别，不再因文件名/user_version=0改写；
+  只迁移完整匹配的已初始化v1，保留十张旧表内容和身份/账本/seq；认证已知schema的完整
+  receipt/source先独立E1，再判断task/T2，unassociated/invalid可在无模型重开后有限导出。
+- 两条继承旅程、十五项既有相关Rust tests的适用版本、实际source/binary/schema/hash、
+  receipt/原日志/失败边界见[修复证据](../evidence/c17-ownership-evidence-repair-20261025.json)。
+  场景仍为同一受管容器内独立逻辑节点+真实OpenSSH，不是物理双机/LLM/选主/掉电验收。
+  最终build与两条旅程exit0；15项原相关tests在7cf04bd实过，最终仅schema过滤字面修正，
+  那15项包输入实核未变，未无谓重编/假称重跑。docs/fmt/diff exit0。错误计算predicate分支
+  只做静态E1边界确认，不伪称另注入一次故障。自有sshd/proxy均停，连接errno111。
+- 本轮未改C01/C22代码。#6 ledger_id/seq重开P1仍存在；主控已在#6认领S1后durable
+  dispatcher，勿在其相同候选重复写。下一行为包为C01持续账本/dispatch→#12真实child/T2
+  →#22 registry/成员authority。未知schemaIngress、自动pending协调、全部异构平台、
+  A42/A47/A48/A49和7/30天原义务保留；#6/#12/#22及完整goal均不关闭。
+- 独立候选 `/tmp/shenko-c17-repair-LzjgwLDo/repo`；原共享源/原worktrees/旧fixtures未写入或删除，
+  Cargo使用共享flock、单job、关闭incremental；只使用本次loopback fixture，无陌生设备部署。
+
+### 本次独立读回的关联PR状态
+
+| issue / slice | 实际PR状态 | 交付/merge事实 |
+| --- | --- | --- |
+| #6 C01 | PR28 OPEN/DRAFT | head `ee9a3e009bec6d32437fec5cb9fbc26557d23204`；没有真实merge SHA，恢复/outbox及ledger P1不因C17完成 |
+| #12 C07 | PR33、35 MERGED | parent merge `54d6ae5c0a870eee8640d2deb0e89854ae6dc1ae`；repair merge `94b8c5c2b03daaa7f3f73892e963479021ea6e24`；production child/T2仍欠 |
+| #22 C17 | PR37、40 MERGED | first slice merge `012a3f6285210888ce1c5bbb0e23397ab9cfbfd3`；本修复merge `d593acfff33f1fa0f881be2497ee47f6784f396d`；#22仍OPEN |
+
+这里是本次checkpoint时的真实远端观察，不将后续docs commit当未验证的新产品；完整S1–S5未完成。
 
 ## C07 当前可取修复与接续（2026-10-25）
 
@@ -12,7 +59,7 @@
 - 已组合真实 main `98af8144788c5197dfe9289800127066d9ab5700`，本地 verification SHA `1dfa8252e56d0115f55316f53c3e04fde7e9fa5e` 的 application check/example build exit 0。原始输入/日志/范围见 [C07 修复证据](../evidence/c07-ssh-repair-20261025.json)、[任务卡](../tasks/C07.md)；PR 的实际 mergeCommit 和 issue 交付 comment 记录最终合入状态，不能以候选 SHA 冒充 main 已同步。
 - 接续副本 `/tmp/shenko-c07-repair-owzisjCq/repo`；Cargo 仍共享 flock、单 job、关闭 incremental。自有 sshd 已下线、临时 keys/receipts/日志保留；共享源与原 worktrees 未写入/删除。下一个行为切片是 production durable outbox/child scheduler→SSH/T2、归属/authority/祖先取消/node fencing 与 residual supervisor；完整 seat/OMP/Claude/TUI/WASM/第二物理节点和长跑未交付。baseline ledger identity/reopen 连续性、SQLite 3.46.0 WAL-reset/CAS 掉电保证仍有缺口。#12 与全产品均不标 complete。
 
-## 当前 checkpoint：PR28 仍为 Draft，不能合入
+## 历史 checkpoint：PR28 在 ee9a3e0 仍有 P1，未直接合入
 
 - 执行身份 `cyjin-yl`；[#6](https://github.com/cyjin-yl/shenko/issues/6) 已 assign 同一真实账号，并有开工/接口/交付/本轮复核认领 comments。认领不形成排他锁或人工 gate。
 - 复核对象是 [PR28](https://github.com/cyjin-yl/shenko/pull/28) / `fix/c01-durable-recovery-20261024` 的实际 head `ee9a3e009bec6d32437fec5cb9fbc26557d23204`，重点逐项读回 `b525f8d→ee9a3e0` 的13文件增量，而非复述 fixed_findings。

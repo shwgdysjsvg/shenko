@@ -19,5 +19,10 @@ thiserror = { workspace = true }
 tracing = { workspace = true }
 parking_lot = { workspace = true }
 bytes = { workspace = true }
+
+[dev-dependencies]
+shenko-identity = { path = "../shenko-identity" }
+shenko-channel-napcat = { path = "../shenko-channel-napcat" }
+
 [lints.rust]
 edition_2024_expr_fragment_specifier = "allow"

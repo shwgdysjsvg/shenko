@@ -671,7 +671,7 @@ a{color:inherit}
       <span class="presence"></span>
     </span>
     <div class="panel-id">
-      <span class="name">深刻</span>
+      <span class="name" id="panel-name">未命名</span>
       <span class="sub" id="panel-status">未连接</span>
     </div>
     <button class="panel-close" id="panel-close" type="button" aria-label="关闭自我状态">×</button>
@@ -862,7 +862,7 @@ a{color:inherit}
   }
 
   /* ── Timeline entries ─────────────────────────────────────────── */
-  var localRound = 0, latestRound = null, lastStep = null, lastDateKey = '';
+  var latestRound = null, lastStep = null, lastDateKey = '';
   var hasThoughts = false, hasUser = false, awaitingReply = false;
   var seenSteps = new Set(), seenIds = new Set();
   var submissions = new Map(), payloads = new Map();
@@ -957,8 +957,6 @@ a{color:inherit}
 
   function handleThought(d) {
     var content = String(d.content == null ? '' : d.content);
-    if (!content.trim()) return;
-
     var id = d.message_id ? String(d.message_id) : '';
     if (id) {
       if (seenIds.has(id)) return;
@@ -968,11 +966,24 @@ a{color:inherit}
     var step = null;
     if (d.step !== null && d.step !== undefined && String(d.step).trim() !== '') {
       var n = Number(d.step);
-      if (Number.isFinite(n)) step = n;
+      if (Number.isSafeInteger(n) && n > 0) step = n;
     }
+    // Never substitute a browser-visible message count for a subject step.
+    if (step === null) return;
     if (step !== null) {
       if (seenSteps.has(step)) return;
       seenSteps.add(step);
+    }
+
+    if (!content.trim()) {
+      if (step !== null) {
+        lastStep = lastStep === null ? step : Math.max(lastStep, step);
+        latestRound = latestRound === null ? step : Math.max(latestRound, step);
+        statusStep.textContent = '第 ' + latestRound + ' 轮';
+        if (cfgStep) cfgStep.textContent = String(latestRound);
+        updatePanelHeader();
+      }
+      return;
     }
 
     var dt = parseDate(d.committed_at) || parseDate(d.timestamp);
@@ -985,9 +996,7 @@ a{color:inherit}
       appendGap(lastStep + 1, step - 1);
     }
 
-    localRound += 1;
-    var round = step !== null ? step : localRound;
-    localRound = Math.max(localRound, round);
+    var round = step;
     if (latestRound === null || round > latestRound) latestRound = round;
     var art = appendThought(round, step, content, dt);
     if (d.demo) art.dataset.demo = '1';
@@ -1053,7 +1062,7 @@ a{color:inherit}
     return art;
   }
 
-  function setReceipt(art, state, step) {
+  function setReceipt(art, state, step, detail) {
     var r = art.querySelector('.receipt');
     if (!r) return;
     r.textContent = '';
@@ -1063,7 +1072,7 @@ a{color:inherit}
     } else if (state === 'sent') {
       r.textContent = '已发出';
     } else if (state === 'failed') {
-      r.appendChild(document.createTextNode('未发出 · '));
+      r.appendChild(document.createTextNode((detail ? '未接收：' + detail : '未发出') + ' · '));
       var b = document.createElement('button');
       b.type = 'button';
       b.textContent = '重试';
@@ -1088,21 +1097,33 @@ a{color:inherit}
         }
       });
       r.appendChild(b);
-    } else if (state === 'accepted') {
-      r.textContent = '服务器已接收';
-    } else if (state === 'selected') {
-      r.textContent = '已选入第 ' + step + ' 轮';
-    } else if (state === 'committed') {
-      r.textContent = '主体已处置';
+    } else if (state === 'queued') {
+      r.textContent = '已进入内存队列 · 尚未持久化';
+
     }
   }
 
   function handleReceipt(d) {
+    if (d.schema_version !== 1) return;
     var art = submissions.get(String(d.submission_id));
     if (!art) return;
-    if (d.stage === 'accepted') setReceipt(art, 'accepted');
-    else if (d.stage === 'selected') setReceipt(art, 'selected', d.step);
-    else if (d.stage === 'committed') setReceipt(art, 'committed');
+    if (d.stage === 'rejected') {
+      setReceipt(art, 'failed', null, String(d.detail || '服务器拒绝接收'));
+      var payload = payloads.get(String(d.submission_id));
+      // Do not overwrite a newer draft; the failed row always keeps its retry.
+      if (payload && !compose.value.trim()) {
+        compose.value = payload.content;
+        saveDraft(payload.content);
+        adjustHeight();
+        updateSend();
+      }
+      awaitingReply = Array.from(submissions.values()).some(function (row) {
+        var receipt = row.querySelector('.receipt');
+        return receipt && receipt.dataset.state !== 'failed' && receipt.dataset.state !== 'committed';
+      });
+      updateTail();
+    }
+    else if (d.stage === 'queued') setReceipt(art, 'queued');
   }
 
   function appendInterruption(secs) {
@@ -1407,6 +1428,16 @@ a{color:inherit}
         return;
       }
       if (d.type === 'receipt') { handleReceipt(d); return; }
+      /* A new identity revision reached the timeline: re-read the real
+         profile instead of keeping the name from page load. */
+      if (d.type === 'identity') {
+        if (typeof d.revision === 'number' &&
+            (wantedIdentityRev === null || d.revision > wantedIdentityRev)) {
+          wantedIdentityRev = d.revision;
+        }
+        if (shownIdentityRev === null || shownIdentityRev < wantedIdentityRev) fetchSelf();
+        return;
+      }
       if (d.type === 'thought') { handleThought(d); return; }
       if (d.role === 'system') return;            /* welcome / metadata, never a row */
       if (d.role === 'subject') {
@@ -1432,6 +1463,25 @@ a{color:inherit}
     if (isSheet()) return 'sheet';
     if (window.matchMedia('(max-width:1439px)').matches) return 'drawer';
     return 'float';
+  }
+
+  /* The self panel shows the instance's own name (SPEC §6); the nav brand
+     stays the framework's. Unnamed instances keep a neutral mark.
+     Revisions only move forward: a late response for an older revision
+     never replaces a newer one already shown. */
+  var shownIdentityRev = null;   // revision currently rendered
+  var wantedIdentityRev = null;  // newest revision announced over WS
+  var identityRetry = null;
+  var identityRetryDelay = 1000;
+  function applyIdentity(identity) {
+    var rev = identity && typeof identity.revision === 'number' ? identity.revision : null;
+    if (rev !== null && shownIdentityRev !== null && rev < shownIdentityRev) return;
+    if (rev !== null) shownIdentityRev = rev;
+    var name = identity && identity.display_name ? String(identity.display_name) : '';
+    var nameEl = document.getElementById('panel-name');
+    if (nameEl) nameEl.textContent = name || '未命名';
+    var mark = name ? Array.from(name)[0] : '·';
+    document.querySelectorAll('.avatar .mono-mark').forEach(function (el) { el.textContent = mark; });
   }
 
   function updatePanelHeader() {
@@ -1743,13 +1793,36 @@ a{color:inherit}
     });
   }
 
+  /* An announced revision is retried with backoff until it is actually
+     loaded, so one failed HTTP refresh cannot strand the old name while the
+     socket stays healthy and sends no further identity notes. */
+  function ensureIdentityLoaded() {
+    var behind = wantedIdentityRev !== null &&
+      (shownIdentityRev === null || shownIdentityRev < wantedIdentityRev);
+    if (!behind) {
+      // Caught up: a retry scheduled for an older gap must not fire later.
+      if (identityRetry) { clearTimeout(identityRetry); identityRetry = null; }
+      identityRetryDelay = 1000;
+      return;
+    }
+    if (identityRetry) return;
+    identityRetry = setTimeout(function () { identityRetry = null; fetchSelf(); }, identityRetryDelay);
+    identityRetryDelay = Math.min(identityRetryDelay * 2, 30000);
+  }
+
+  var selfSeq = 0;      // last request issued
+  var selfApplied = 0;  // newest request whose response was applied
   function fetchSelf() {
+    var seq = ++selfSeq;
     selfState = 'loading';
     renderArtifacts();
     getJSON('/api/self').then(function (d) {
+      if (seq < selfApplied) return;  // a newer response already landed
+      selfApplied = seq;
       if (!d || d.available === false) { selfState = 'unavailable'; selfData = null; }
       else {
         selfState = 'ok'; selfData = d;
+        applyIdentity(d.identity);
         /* The WS stream carries no replay history; /api/self reports the last
            committed step observed by the loop. Use it as the baseline so the
            status strip does not restart at 第 1 轮 after a page reload. */
@@ -1757,7 +1830,6 @@ a{color:inherit}
           var baseline = Math.floor(d.step);
           if (latestRound === null || baseline > latestRound) {
             latestRound = baseline;
-            localRound = Math.max(localRound, baseline);
             lastStep = lastStep === null ? baseline : Math.max(lastStep, baseline);
             statusStep.textContent = '第 ' + baseline + ' 轮';
             if (cfgStep) cfgStep.textContent = String(baseline);
@@ -1767,11 +1839,16 @@ a{color:inherit}
       }
       renderDevices();
       renderArtifacts();
+      ensureIdentityLoaded();
     }).catch(function () {
-      selfState = 'unavailable';
-      selfData = null;
+      if (seq < selfApplied) return;
+      // A failed refresh never discards a profile that already loaded; the
+      // panel keeps the last verified data and only an empty page is
+      // reported unavailable.
+      selfState = selfData ? 'ok' : 'unavailable';
       renderDevices();
       renderArtifacts();
+      ensureIdentityLoaded();
     });
   }
 

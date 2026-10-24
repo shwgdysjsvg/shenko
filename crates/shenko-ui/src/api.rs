@@ -217,8 +217,21 @@ async fn self_status_handler(State(state): State<ApiState>) -> Json<Value> {
         None => Vec::new(),
     };
 
+    // Instance identity (SPEC §6): the name is the instance's, not the brand.
+    let identity = state.store.as_ref().and_then(|store| {
+        let agent_id = store.get_existing_agent_id().ok()??;
+        store.latest_identity(agent_id).ok()?
+    });
+
     Json(json!({
         "status": status,
+        "identity": identity.map(|p| json!({
+            "agent_id": p.agent_id.to_string(),
+            "revision": p.revision,
+            "display_name": p.display_name,
+            "naming": p.naming,
+            "soul": p.soul,
+        })),
         "connected_clients": connected_clients,
         "step": step,
         "model": model,

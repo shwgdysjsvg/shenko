@@ -1,15 +1,15 @@
+use anyhow::Result;
+use axum::{Extension, Router, routing::get};
 use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::sync::Arc;
-use axum::{Router, routing::get, Extension};
 use tower_http::cors::CorsLayer;
 use tracing::info;
-use anyhow::Result;
 
 use crate::api::{self, ApiState};
 use crate::playground::{self, PlaygroundState};
 use crate::routes::*;
-use crate::ws::{ws_handler, WsState};
+use crate::ws::{WsState, ws_handler};
 
 pub struct UiServer {
     pub bind: SocketAddr,
@@ -36,7 +36,9 @@ impl UiServer {
         }
     }
 
-    pub fn ws_state(&self) -> WsState { self.state.clone() }
+    pub fn ws_state(&self) -> WsState {
+        self.state.clone()
+    }
 
     /// Point the persistent Playground at `<data_dir>/playground`. SPEC §43.2.
     pub fn with_data_dir(mut self, data_dir: impl Into<PathBuf>) -> Self {
@@ -48,10 +50,8 @@ impl UiServer {
 
     /// Attach the persistent store for the read-only WebUI task list.
     /// Without this, `/api/tasks` honestly serves `available: false`.
-    pub fn with_store(
-        mut self,
-        store: std::sync::Arc<shenko_store::store::Store>,
-    ) -> Self {
+    pub fn with_store(mut self, store: std::sync::Arc<shenko_store::store::Store>) -> Self {
+        self.state.store = Some(Arc::clone(&store));
         self.store = Some(store);
         self
     }

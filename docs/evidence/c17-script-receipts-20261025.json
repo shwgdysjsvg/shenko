@@ -1,0 +1,641 @@
+{
+  "schema_version": 1,
+  "evidence_id": "c17-script-receipts-20261025",
+  "issue": "https://github.com/cyjin-yl/shenko/issues/22",
+  "pr": "https://github.com/cyjin-yl/shenko/pull/44",
+  "status": "focused_script_slice_verified_pushed_and_merged",
+  "full_C17_complete": false,
+  "production_integration_complete": false,
+  "full_cases_passed": [],
+  "requirements": [
+    "R026",
+    "R113",
+    "R145",
+    "R147"
+  ],
+  "cases_reference_only": [
+    "A42",
+    "A47",
+    "A48",
+    "A49"
+  ],
+  "base_commit": "9d6c1af980ded1c4e8c7cd4dc24acd7405b92330",
+  "product_commit": "7c1d91b49757c6256f9236c9c802cb1d8bafdc95",
+  "previous_checkpoint_before_latest_main_rebase": "3b35988",
+  "product_inputs_sha256": {
+    "Cargo.toml": "2ff0908710936b9c93fd89de2ba960544800a39d0eb84f48efe79d6be2671e7e",
+    "Cargo.lock": "104bcf1f561ef62ac56a8da2b0f07b0b50075fcb59260556d8a33ef995ae3ebe",
+    "crates/shenko-node/Cargo.toml": "4d3ddf328db725f8094ff96b69b8f4ef3b6fe714efe5d930794bf9638856f5ab",
+    "crates/shenko-node/src/lib.rs": "d91968cecdd007aeb8e68524af10f5510b6c19dba5c0d71fc7cc0f8d2c5e912c",
+    "crates/shenko-node/src/main.rs": "fc7d5c5067f9a1f2c462ec377080e9a07585766dddd3221172d6530ebd4d0724",
+    "crates/shenko-exec-ssh/src/remote_helper.py": "84774195a09d28b1ecd6a2fd310648bb4478f89db0226b8d3831c95a563c2e95",
+    "scripts/managed_node.py": "f7f86fcac36540036b6fdafe35be2d74020ba0945114902c0ffe860aa34c4e8d",
+    "crates/shenko-node/tests/managed_journey.py": "db6debf23a261f288d8ef53ce4d463eab5913bf1f73b66c40527f6b73b3663eb"
+  },
+  "full_tracked_input_manifest": {
+    "path": "/tmp/shenko-c17-scripts-45zhEXYR/candidate-inputs-main-integrated.json",
+    "sha256": "f28679fefd2fedb117932e4a4175cfda153ec0527c56d3eac2f00609cdbfdc9a",
+    "product_commit": "7c1d91b49757c6256f9236c9c802cb1d8bafdc95",
+    "files": 256,
+    "symlinks": 19,
+    "scope": "clean integrated product commit before evidence-only docs update; not a hash claim for future delivery docs"
+  },
+  "native": {
+    "new_rust_build_run": true,
+    "source_revision": "7c1d91b49757c6256f9236c9c802cb1d8bafdc95",
+    "manifest": {
+      "arch": "x86_64",
+      "artifact_digest": "blake3:0ac2e564d96ba7ec5b5ac71fe02cec97e22df2a86627721a5b01c6e29f58128f",
+      "os": "linux",
+      "schema": 1,
+      "source_revision": "7c1d91b49757c6256f9236c9c802cb1d8bafdc95"
+    },
+    "binary": "/tmp/shenko-c17-scripts-45zhEXYR/shenko-node-7c1d91b",
+    "artifact_sha256": "c3223416592831ef093128327c14abc7b13791066d7ec62eb8273644438e3bbb",
+    "ssh_driver": "/tmp/shenko-c17-scripts-45zhEXYR/task-ssh-7c1d91b",
+    "ssh_driver_sha256": "281fc8150694210051d6fb3a15717b6c16cb6dc20e389bedf31b686d4278ac35",
+    "source_match_command": "git diff --quiet 7c1d91b49757c6256f9236c9c802cb1d8bafdc95 HEAD -- Cargo.toml Cargo.lock crates/shenko-node/src crates/shenko-node/Cargo.toml crates/shenko-exec-ssh crates/shenko-store crates/shenko-types",
+    "source_match_exit": 0,
+    "binary_B_sha256": "b77ea9cb87d5af8dcdc181a03993ce5b47b3481eb435f46e6e8682c375060d75",
+    "binary_B_provenance": "same verified native ELF plus trailing C17 fixture marker; actual executable digest/manifest recomputed, not another Rust source revision",
+    "reused_evidence": "PR40 storage/ownership implementation is inherited; earlier 15-test evidence is historical only after transitive main changes. Current node/SSH/types build/tests and original journeys were freshly run.",
+    "existing_related_rust_tests_reused": 0,
+    "new_rust_tests": 0,
+    "fresh_existing_rust_tests_passed": 4,
+    "build_scope": "targeted shenko-node and shenko-exec-ssh example task_ssh only; no whole-workspace build; CARGO_BUILD_JOBS=1 CARGO_INCREMENTAL=0 CARGO_TARGET_DIR=/tmp/shenko-live-target and whole command flock /tmp/shenko-cargo.lock"
+  },
+  "environment": {
+    "host": "doescontainer",
+    "container": "shenko-dev-live",
+    "worker_concurrency": 1,
+    "cpus": 8,
+    "memory_bytes": 6442450944,
+    "model_or_physical_node_evidence": false,
+    "parent_admission": "C07 fixture-init and synthetic identity; not production registry/outbox"
+  },
+  "changes": [
+    "Schema-2 plan freezes per-deployment staging paths, installer and root script; frozen C07 upload and install inputs retain identity on retry.",
+    "C07 shared write_atomic prepares validated synced receipt bytes; same-directory hard link publishes final artifact/receipt without overwrite, followed by directory fsync. Incomplete temporary/damaged files remain evidence.",
+    "Explicit repair_of_plan freezes predecessor deployment ID and plan hash with a new deployment/operation; old schema-1 execution has no legacy fallback, queries retain old identity.",
+    "Query bypasses mutable local trust pathname and uses original C07 CAS trust; new admission still validates registered digest; strict actual host verification/remote revocation retained.",
+    "Original journey cuts transport only after decoding complete install and C07 receipts and checking artifact bytes; all owned listeners stop and are read back refused.",
+    "Confirmed review P2 fixed: require_executable_plan rejects every non-query invoke, including call/node_call, before trust reads, request writes, task read or execute. ValueError remains enforced under Python optimization; stage reuses the same guard."
+  ],
+  "verification": {
+    "baseline_interleaving_real_SSH": {
+      "exit": 0,
+      "reproduced": true,
+      "log": "/tmp/shenko-c17-scripts-45zhEXYR/baseline-journey.log",
+      "source": "4a4f5e4e1254ceb48726532291da53cfee9c5668",
+      "outcome": "A successful uploads, B overwrites shared chunks, A original receipt reads cannot restore bytes; A install application failure"
+    },
+    "baseline_partial_receipt_python": {
+      "reproduced": true,
+      "crash_exit": 91,
+      "retry_exit": 1,
+      "truncated_final_preserved": true
+    },
+    "baseline_mutable_trust_precheck": {
+      "missing_file_blocks_query": true,
+      "unrelated_edit_blocks_query": true,
+      "kind": "original Python adapter precheck before SSH; not a live revocation test"
+    },
+    "final_journey_exit": 0,
+    "original_real_SSH_journeys": 2,
+    "added_independent_scenario_budget": 4,
+    "new_scenarios": "prior interleaving/trust and Python publication lifecycles retained; one old-plan admission/query/repair lifecycle added to original journey 1, plus a narrow in-memory baseline/fix call-path reproduction; fewer than ten, no new Rust tests",
+    "journey_1": {
+      "deployment_A": "55a3b9a0-1362-4aad-9d9d-8014b4144c97",
+      "deployment_B": "a485f590-5b22-4c43-a532-5045f7cbc1f1",
+      "install_operation": "a9d4466c-0227-5044-b11c-d6daf090af53",
+      "all_A_B_mutating_attempt_counts": 1,
+      "different_artifacts_same_registered_target_root": true,
+      "query_after_local_trust_removal_and_unrelated_host_addition": true,
+      "new_admissions_rejected": true,
+      "negative_transport_receipts": [
+        {
+          "kind": "changed_real_host_key",
+          "path": "/tmp/shenko-c17-scripts-45zhEXYR/journey-main-integrated/deployment/receipt-install-c6f5ba7a-c666-4a34-8710-17a6fafe8009.json",
+          "sha256": "57a21828c73cf7f29069d2e71e0a5f695025e38ca4fc485f599bfd3e8200af71",
+          "ssh_exit": 255,
+          "timed_out": false
+        },
+        {
+          "kind": "injected_closed_SSH_stream",
+          "path": "/tmp/shenko-c17-scripts-45zhEXYR/journey-main-integrated/deployment/receipt-install-18225ef4-442c-49b7-9983-9ae318ce83f5.json",
+          "sha256": "8d0ddb2934245f7dcb2522f6af8c79c142ef223ec58bd6675253c22d62c160d4",
+          "ssh_exit": 255,
+          "timed_out": false
+        },
+        {
+          "kind": "remote_authorization_revoked",
+          "path": "/tmp/shenko-c17-scripts-45zhEXYR/journey-main-integrated/deployment/receipt-install-9d989c48-c6ad-4575-a90a-08e46cf26f43.json",
+          "sha256": "af3c59e15f0d25dbbec53e2694353698cafde66c2cba9975b4d5581e3fdfba60",
+          "ssh_exit": 255,
+          "timed_out": false
+        }
+      ],
+      "unrelated_db_unchanged": true,
+      "legacy_migration": {
+        "old_tables_preserved": 10,
+        "source_readonly": true,
+        "storage_schema": 2
+      }
+    },
+    "journey_2": {
+      "task_id": "11a2f183-34f5-494f-9d32-32f2fc437cab",
+      "epochs": [
+        "1",
+        "2"
+      ],
+      "terminal_results": 1,
+      "source_events": 2,
+      "receipt_rows": 3,
+      "prior_PR40_E1_T2_assertions_retained": true,
+      "old_computation_claimed_stopped": false
+    },
+    "publication_fault": {
+      "C07_redispatch_test": false,
+      "crash_exit": 91,
+      "damaged_evidence_preserved": true,
+      "kind": "pure_python_process_fault",
+      "partial_final_published": false,
+      "power_loss_test": false,
+      "repair_operation": "ef0564de-b0a4-4a9d-ac85-d7ebe9c92f32"
+    },
+    "static_only": [
+      "POSIX file/directory fsync ordering; no physical power-loss experiment",
+      "A full deployment originally created by the schema-1 executable has not been repaired over SSH; the real SSH boundary/repair lifecycle uses a projected schema-1-format plan and existing schema-2 CAS operation."
+    ],
+    "command": "python3 -I /tmp/shenko-c17-scripts-45zhEXYR/repo/crates/shenko-node/tests/managed_journey.py /tmp/shenko-c17-scripts-45zhEXYR/repo /tmp/shenko-c17-scripts-45zhEXYR/shenko-node-7c1d91b /tmp/shenko-c17-scripts-45zhEXYR/task-ssh-7c1d91b /tmp/shenko-c07-sshd-packages-BKBF7d6n/root/usr/sbin/sshd /tmp/shenko-c07-sshd-packages-BKBF7d6n/root/usr/lib/x86_64-linux-gnu /tmp/shenko-c17-scripts-45zhEXYR/journey-main-integrated /tmp/shenko-c17-kxCI4JuI/journey-final/remote-worker/data",
+    "failure_history": [
+      "Initial inspection shell quoting exited 2 before reading/modifying source.",
+      "Unpublished rebase onto latest main had expected original-journey/docs conflicts; both PR40 assertions and this slice preserved. No reset/stash/force or lost source.",
+      "First checkpoint journey used PR37 matching native source; final main-integrated journey uses matching PR40 final binary. No old binary was represented as a build of new Rust.",
+      "Read-only GitHub PR inspection requested unsupported old-gh field baseRefOid; command failed without product side effects; corrected to supported fields.",
+      "Publication-seat inspection used an initialized, un-checked-out transfer repository; git log exit128 was inspected without reset, stash or overwriting any checkout.",
+      "Final docs-only merge preview extraction wrapper exit1: installed Python tarfile has no extractall(filter=...) keyword, and no files were extracted. Retry checked every bounded archive path/symlink target before extraction, then exact prospective merged-tree docs check exit0. Product and real SSH journey were unaffected; archive/failure/retry record retained."
+    ],
+    "docs_check_exit": 0,
+    "diff_check_exit": 0,
+    "old_plan_boundary": {
+      "direct_invoke_rejected": true,
+      "fixture": "schema-1 shape projected from current plan; not old binary deployment",
+      "fresh_operation_attempts": 0,
+      "old_operation": "a9d4466c-0227-5044-b11c-d6daf090af53",
+      "old_plan_preserved": true,
+      "old_plan_sha256": "fb79025feb3f0ad8a6aff49c0871dc7edea812e30ff20b71c1af1c5de132f663",
+      "old_query_repeats": 2,
+      "original_and_repair_attempts": 1,
+      "rejected_cli_exit_codes": [
+        1,
+        1
+      ],
+      "repair_deployment": "b2a1da20-ec13-4e82-a5bb-3291e428a2b4",
+      "repair_lineage": {
+        "deployment_id": "55a3b9a0-1362-4aad-9d9d-8014b4144c97",
+        "plan_sha256": "fb79025feb3f0ad8a6aff49c0871dc7edea812e30ff20b71c1af1c5de132f663"
+      },
+      "repair_operation": "3ea4aaff-b5a8-5eba-a18d-bdbe684fbfa1",
+      "repair_query_repeats": 2
+    },
+    "call_path_reproduction": {
+      "exit": 0,
+      "path": "/tmp/shenko-c17-scripts-45zhEXYR/boundary-reproduction.json",
+      "sha256": "ea64abd77727f0324939628f63e5a89021950d37ae84b731e7c80c37bc36c494",
+      "scope": "actual original schema-1 plan, transport mocked; baseline reaches task/execute, fix rejects before driver or request file. Not SSH."
+    },
+    "fresh_retest_product_commit": "7c1d91b49757c6256f9236c9c802cb1d8bafdc95",
+    "fresh_log_sha256": "a84ad51792d2975f6dc165a353ef47e096bef33ca36db12bf104b77f302b9e74",
+    "fresh_result_sha256": "c85368257673046679cfaf6a7190ca321d22c1884fc2b79aae655cbf20f5e0c8",
+    "targeted_native_build": {
+      "node_exit": 0,
+      "ssh_example_exit": 0,
+      "existing_tests_exit": 0,
+      "packages_tested": [
+        "shenko-node",
+        "shenko-exec-ssh",
+        "shenko-types"
+      ],
+      "existing_tests_passed": 4,
+      "failed": 0,
+      "ignored": 0,
+      "new_tests": 0,
+      "logs": {
+        "build-main-node.log": {
+          "path": "/tmp/shenko-c17-scripts-45zhEXYR/build-main-node.log",
+          "sha256": "a21ce3b78ba351b154837ae2e0c0a81667960c7a5c94081be40498387da9f4d1"
+        },
+        "build-main-ssh.log": {
+          "path": "/tmp/shenko-c17-scripts-45zhEXYR/build-main-ssh.log",
+          "sha256": "3bd52246583c31004faef14b0043820a54e95af221e50198851e61d6ddd4b0bb"
+        },
+        "tests-main-native.log": {
+          "path": "/tmp/shenko-c17-scripts-45zhEXYR/tests-main-native.log",
+          "sha256": "19679545457179439bae96de605227f55db9393e1fe51634f79cdca69ebdae4e"
+        }
+      }
+    }
+  },
+  "artifacts": {
+    "candidate_repo": "/tmp/shenko-c17-scripts-45zhEXYR/repo",
+    "input_manifest": "/tmp/shenko-c17-scripts-45zhEXYR/candidate-inputs-complete.json",
+    "read_only_snapshot": "/tmp/shenko-c17-scripts-45zhEXYR/review-snapshot-complete",
+    "snapshot_head": "c10e6c210e8a0c12d22f6ea0e9913c194b786df6",
+    "final_journey_log": "/tmp/shenko-c17-scripts-45zhEXYR/journey-main-integrated.log",
+    "result": "/tmp/shenko-c17-scripts-45zhEXYR/journey-main-integrated/result.json",
+    "raw_receipts": "/tmp/shenko-c17-scripts-45zhEXYR/journey-main-integrated/deployment",
+    "service_stop": "/tmp/shenko-c17-scripts-45zhEXYR/journey-main-integrated/service-stop.json",
+    "baseline_publication": "/tmp/shenko-c17-scripts-45zhEXYR/baseline-publication",
+    "previous_read_only_snapshot_preserved": "/tmp/shenko-c17-scripts-45zhEXYR/review-snapshot",
+    "schema_boundary_plan": "/tmp/shenko-c17-scripts-45zhEXYR/journey-main-integrated/legacy-plan/plan.json",
+    "repair_plan": "/tmp/shenko-c17-scripts-45zhEXYR/journey-main-integrated/repair-deployment/plan.json",
+    "repair_raw_receipts": "/tmp/shenko-c17-scripts-45zhEXYR/journey-main-integrated/repair-deployment",
+    "merge_preview_check": "/tmp/shenko-c17-scripts-45zhEXYR/merge-preview-check.json"
+  },
+  "review": {
+    "original_independent_review": "complete_needs_fix: three original defects passed; one confirmed P2 schema-1 call admission bypass",
+    "reviewed_product": "c10e6c210e8a0c12d22f6ea0e9913c194b786df6",
+    "reviewed_delivery_head": "646a2d093a0418b6952cb222906324971d8ecc85",
+    "confirmed_P2": "fixed at shared non-query invoke boundary in ad3da672c018c18480d8f71716b6aead79b59826",
+    "affected_scope_followup": "single worker read complete 646a2d0..ad3da67 two-file diff and independently read raw deterministic/SSH observations and attempt rows; no new reviewer agent, workflow or forked review skill",
+    "fresh_independent_human_or_agent_review_after_fix": false,
+    "deterministic_and_real_SSH_followup_exit": 0,
+    "unresolved_known_findings_in_this_slice": 0,
+    "previous_review_snapshot_retained": "/tmp/shenko-c17-scripts-45zhEXYR/review-snapshot-complete",
+    "excluded_mock_observation": "/tmp/shenko-c17-scripts-45zhEXYR/baseline-journey/deployment/receipt-review-new-mutation-d902803b-bea9-4bb7-9341-26a16e8da580.json",
+    "excluded_mock_scope": "original reviewer side effect, not SSH receipt; retained and excluded from all real measurements",
+    "main_integration_followup": {
+      "main": "9d6c1af980ded1c4e8c7cd4dc24acd7405b92330",
+      "normal_merge_product": "7c1d91b49757c6256f9236c9c802cb1d8bafdc95",
+      "direct_C17_node_SSH_adapter_inputs_unchanged_by_main_merge": true,
+      "transitive_Cargo_types_store_changed": true,
+      "old_native_binary_not_extrapolated": true,
+      "targeted_build_and_existing_tests_exit": 0,
+      "fresh_original_SSH_journeys_exit": 0,
+      "scope": "Read changed ledger/external admission interfaces and source paths; current C01/C22 integration is inherited, not a new independent full audit."
+    }
+  },
+  "bounds": [
+    "Native POSIX one-shot pure-task adapter; same OS/container real OpenSSH, not physical two-machine/LLM/trusted autonomous discovery/full C17.",
+    "Direct Python process serialization fault is not an SSH interruption, allowed C07 redispatch, or physical power loss.",
+    "Plan-local repair lineage is not full production OperationRecord.compensates integration. Old unknown operations must be reconciled, not bypassed.",
+    "No Rust directory/DB/E1-T2 code modified; merged PR40 inherited. Epoch history scans, executable allocation, duplicate conflict archives and unused memo remain outside this script slice.",
+    "Old-plan boundary SSH check projects schema-1 shape from current plan; it does not establish an original schema-1 installer deployment or power-loss migration."
+  ],
+  "remaining": [
+    "Full old-executable-created schema-1 deployment through SSH repair remains unverified; projected old-format query/repair and actual-old-plan mocked call admission are separately bounded.",
+    "C01 production registry/outbox/child/C07-T2, member authority, resource fencing and no-LLM full history/image recovery remain.",
+    "Model/provider privacy routing, elections/partitions/recursive takeover, all platforms/WASM, physical second machine and 7/30-day evidence remain; #22 stays OPEN."
+  ],
+  "cleanup": {
+    "sshd_stopped": true,
+    "proxy_stopped": true,
+    "refused_ports": [
+      36497,
+      56065
+    ],
+    "connect_errno": 111,
+    "baseline_listeners_refused": true,
+    "fixtures_keys_receipts_failed_logs_preserved": true,
+    "shared_source_or_other_candidates_modified": false,
+    "force_push_or_protection_changes": false
+  },
+  "initial_product_commit": "c10e6c210e8a0c12d22f6ea0e9913c194b786df6",
+  "initial_product_inputs_sha256": {
+    "Cargo.toml": "086a065b8bad1417e0c4cebc98d136dbc3318c9f57a0891540b70a16ef043b45",
+    "Cargo.lock": "fa859463933f017bf12e0cec2218758956202b3442419ffd33b004d21dd75895",
+    "crates/shenko-node/Cargo.toml": "4d3ddf328db725f8094ff96b69b8f4ef3b6fe714efe5d930794bf9638856f5ab",
+    "crates/shenko-node/src/lib.rs": "d91968cecdd007aeb8e68524af10f5510b6c19dba5c0d71fc7cc0f8d2c5e912c",
+    "crates/shenko-node/src/main.rs": "fc7d5c5067f9a1f2c462ec377080e9a07585766dddd3221172d6530ebd4d0724",
+    "crates/shenko-exec-ssh/src/remote_helper.py": "84774195a09d28b1ecd6a2fd310648bb4478f89db0226b8d3831c95a563c2e95",
+    "scripts/managed_node.py": "f10e7a6c055a67c7127df4c155e23c2422405389f39f8170fac6712b590d9397",
+    "crates/shenko-node/tests/managed_journey.py": "055d1e0e13f2fccfed19b19afc91a6f04d87de41bc24bee80a3710c4f5b0323c"
+  },
+  "previous_full_tracked_input_manifest": {
+    "path": "/tmp/shenko-c17-scripts-45zhEXYR/candidate-inputs-complete.json",
+    "sha256": "f7e051fcee6a1606484c782a538124ec44f516a710562f999428bfbc590a6f5b",
+    "regular_files": 246,
+    "symlinks": 19,
+    "symlink_hash_semantics": "UTF-8 link target text; target files separately hashed"
+  },
+  "initial_verification": {
+    "baseline_interleaving_real_SSH": {
+      "exit": 0,
+      "reproduced": true,
+      "log": "/tmp/shenko-c17-scripts-45zhEXYR/baseline-journey.log",
+      "source": "4a4f5e4e1254ceb48726532291da53cfee9c5668",
+      "outcome": "A successful uploads, B overwrites shared chunks, A original receipt reads cannot restore bytes; A install application failure"
+    },
+    "baseline_partial_receipt_python": {
+      "reproduced": true,
+      "crash_exit": 91,
+      "retry_exit": 1,
+      "truncated_final_preserved": true
+    },
+    "baseline_mutable_trust_precheck": {
+      "missing_file_blocks_query": true,
+      "unrelated_edit_blocks_query": true,
+      "kind": "original Python adapter precheck before SSH; not a live revocation test"
+    },
+    "final_journey_exit": 0,
+    "original_real_SSH_journeys": 2,
+    "added_independent_scenario_budget": 2,
+    "new_scenarios": "one extended interleaved deployment/trust recovery story inside original journey 1, plus one direct Python publication-fault lifecycle; original task journey 2 retained",
+    "journey_1": {
+      "deployment_A": "9f972516-e0ce-445c-908c-c22255309175",
+      "deployment_B": "47ce0e6b-fb54-4e53-86f2-35cc7ef61e62",
+      "install_operation": "311c90d1-01a8-5a2b-a594-98d92fee8a76",
+      "all_A_B_mutating_attempt_counts": 1,
+      "different_artifacts_same_registered_target_root": true,
+      "query_after_local_trust_removal_and_unrelated_host_addition": true,
+      "new_admissions_rejected": true,
+      "negative_transport_receipts": [
+        {
+          "kind": "injected_closed_SSH_stream",
+          "path": "/tmp/shenko-c17-scripts-45zhEXYR/journey-final/deployment/receipt-install-b09b20bb-9a53-4835-b28b-8b132ecde4b0.json",
+          "sha256": "8fbfd331390d46af4dd31f09b1b9f87f82d9b313b6e92a78ab11140325b9a69a",
+          "ssh_exit": 255,
+          "timed_out": false
+        },
+        {
+          "kind": "remote_authorization_revoked",
+          "path": "/tmp/shenko-c17-scripts-45zhEXYR/journey-final/deployment/receipt-install-516e3c89-755b-443f-9e18-9426aaf47e4e.json",
+          "sha256": "c6df2bc4070b6e3e1dad53ebed3befa775580c663596483b80286d3b7f73886e",
+          "ssh_exit": 255,
+          "timed_out": false
+        },
+        {
+          "kind": "changed_real_host_key",
+          "path": "/tmp/shenko-c17-scripts-45zhEXYR/journey-final/deployment/receipt-install-e885fe2b-d818-48e5-a095-96c53f2f43dd.json",
+          "sha256": "b7ab3975db15f3cdf7e1877fc2877b079e61d6e848fac7ca8d06125c5e1e4aa7",
+          "ssh_exit": 255,
+          "timed_out": false
+        }
+      ],
+      "unrelated_db_unchanged": true,
+      "legacy_migration": {
+        "old_tables_preserved": 10,
+        "source_readonly": true,
+        "storage_schema": 2
+      }
+    },
+    "journey_2": {
+      "task_id": "0b94852f-9bd6-4ac6-8dcb-a338cf4e309a",
+      "epochs": [
+        "1",
+        "2"
+      ],
+      "terminal_results": 1,
+      "source_events": 2,
+      "receipt_rows": 3,
+      "prior_PR40_E1_T2_assertions_retained": true,
+      "old_computation_claimed_stopped": false
+    },
+    "publication_fault": {
+      "C07_redispatch_test": false,
+      "crash_exit": 91,
+      "damaged_evidence_preserved": true,
+      "kind": "pure_python_process_fault",
+      "partial_final_published": false,
+      "power_loss_test": false,
+      "repair_operation": "429f1595-2010-4c05-b591-509ddda91f45"
+    },
+    "static_only": [
+      "repair_of_plan prepare linkage fields and old schema-1 execution refusal; direct publication primitive repair identity is exercised, not a full SSH legacy-plan repair journey",
+      "POSIX file/directory fsync ordering; no physical power-loss experiment"
+    ],
+    "command": "python3 -I crates/shenko-node/tests/managed_journey.py REPO NODE_BINARY SSH_DRIVER SSHD LIB_DIR NEW_ROOT V1_DATA_DIR",
+    "failure_history": [
+      "Initial inspection shell quoting exited 2 before reading/modifying source.",
+      "Unpublished rebase onto latest main had expected original-journey/docs conflicts; both PR40 assertions and this slice preserved. No reset/stash/force or lost source.",
+      "First checkpoint journey used PR37 matching native source; final main-integrated journey uses matching PR40 final binary. No old binary was represented as a build of new Rust."
+    ],
+    "docs_check_exit": 0,
+    "diff_check_exit": 0
+  },
+  "plan_versions": {
+    "executable_plan": 2,
+    "query_only_legacy": "absent plan_schema (schema-1 original format)",
+    "native_storage": 2,
+    "native_wire": 1
+  },
+  "initial_artifacts": {
+    "candidate_repo": "/tmp/shenko-c17-scripts-45zhEXYR/repo",
+    "input_manifest": "/tmp/shenko-c17-scripts-45zhEXYR/candidate-inputs-complete.json",
+    "read_only_snapshot": "/tmp/shenko-c17-scripts-45zhEXYR/review-snapshot-complete",
+    "snapshot_head": "c10e6c210e8a0c12d22f6ea0e9913c194b786df6",
+    "final_journey_log": "/tmp/shenko-c17-scripts-45zhEXYR/journey-final.log",
+    "result": "/tmp/shenko-c17-scripts-45zhEXYR/journey-final/result.json",
+    "raw_receipts": "/tmp/shenko-c17-scripts-45zhEXYR/journey-final/deployment",
+    "service_stop": "/tmp/shenko-c17-scripts-45zhEXYR/journey-final/service-stop.json",
+    "baseline_publication": "/tmp/shenko-c17-scripts-45zhEXYR/baseline-publication",
+    "previous_read_only_snapshot_preserved": "/tmp/shenko-c17-scripts-45zhEXYR/review-snapshot"
+  },
+  "pre_main_advance_product_commit": "ad3da672c018c18480d8f71716b6aead79b59826",
+  "pre_main_advance_base_commit": "011cce9b81cb3a14306c9bd9aae451742f2f6bf2",
+  "pre_main_advance_native": {
+    "new_rust_build_run": false,
+    "source_revision": "453fff7e754e46af920dc7fcbc46c9321f41d819",
+    "manifest": {
+      "arch": "x86_64",
+      "artifact_digest": "blake3:991b7934768e6f0ef0ace5492b8961caca0ccc7ac4423f3d36016a113bbe2ebd",
+      "os": "linux",
+      "schema": 1,
+      "source_revision": "453fff7e754e46af920dc7fcbc46c9321f41d819"
+    },
+    "binary": "/tmp/shenko-c17-scripts-45zhEXYR/shenko-node-453fff7",
+    "artifact_sha256": "56ca9fff921c78e0d158eb46f972aafe51b641a21fa2de609ab8197dcc84837f",
+    "ssh_driver": "/tmp/shenko-c17-repair-LzjgwLDo/task_ssh",
+    "ssh_driver_sha256": "3174d5db1a4751f0ae7527887b1ce240fff26429874132f4b5691004936a6fe1",
+    "source_match_command": "git diff --quiet 453fff7e754e46af920dc7fcbc46c9321f41d819 HEAD -- Cargo.toml Cargo.lock crates/shenko-node/src crates/shenko-node/Cargo.toml crates/shenko-exec-ssh crates/shenko-store crates/shenko-types",
+    "source_match_exit": 0,
+    "binary_B_sha256": "5dc824551eef2ec5a77a46d5b2d9c24f2d444f489ed214d84306605eb3a7befa",
+    "binary_B_provenance": "same verified native ELF plus trailing C17 fixture marker; actual executable digest/manifest recomputed, not another Rust source revision",
+    "reused_evidence": "docs/evidence/c17-ownership-evidence-repair-20261025.json",
+    "existing_related_rust_tests_reused": 15,
+    "new_rust_tests": 0
+  },
+  "pre_main_advance_verification": {
+    "baseline_interleaving_real_SSH": {
+      "exit": 0,
+      "reproduced": true,
+      "log": "/tmp/shenko-c17-scripts-45zhEXYR/baseline-journey.log",
+      "source": "4a4f5e4e1254ceb48726532291da53cfee9c5668",
+      "outcome": "A successful uploads, B overwrites shared chunks, A original receipt reads cannot restore bytes; A install application failure"
+    },
+    "baseline_partial_receipt_python": {
+      "reproduced": true,
+      "crash_exit": 91,
+      "retry_exit": 1,
+      "truncated_final_preserved": true
+    },
+    "baseline_mutable_trust_precheck": {
+      "missing_file_blocks_query": true,
+      "unrelated_edit_blocks_query": true,
+      "kind": "original Python adapter precheck before SSH; not a live revocation test"
+    },
+    "final_journey_exit": 0,
+    "original_real_SSH_journeys": 2,
+    "added_independent_scenario_budget": 4,
+    "new_scenarios": "prior interleaving/trust and Python publication lifecycles retained; one old-plan admission/query/repair lifecycle added to original journey 1, plus a narrow in-memory baseline/fix call-path reproduction; fewer than ten, no new Rust tests",
+    "journey_1": {
+      "deployment_A": "b5758b4a-f387-4ff7-bdf4-1e6500ebee87",
+      "deployment_B": "815fef2e-722e-4485-a2af-906dd8b2d96c",
+      "install_operation": "32fe68db-3219-52ae-aafd-f8971d20c75c",
+      "all_A_B_mutating_attempt_counts": 1,
+      "different_artifacts_same_registered_target_root": true,
+      "query_after_local_trust_removal_and_unrelated_host_addition": true,
+      "new_admissions_rejected": true,
+      "negative_transport_receipts": [
+        {
+          "kind": "changed_real_host_key",
+          "path": "/tmp/shenko-c17-scripts-45zhEXYR/journey-schema-boundary/deployment/receipt-install-780cf947-6601-48e1-a5a2-4d0b044f56b3.json",
+          "sha256": "34e88583b20cd20d91e4d49bb0bf4d693948c531aea1452e3e09a25f1ec927c1",
+          "ssh_exit": 255,
+          "timed_out": false
+        },
+        {
+          "kind": "injected_closed_SSH_stream",
+          "path": "/tmp/shenko-c17-scripts-45zhEXYR/journey-schema-boundary/deployment/receipt-install-7a90bbf3-f865-4fe6-b2c9-350d185e0e1f.json",
+          "sha256": "714f19103fe74c28d3a75b28fdcdf6260875fea90e1635eec7a23112053a7bce",
+          "ssh_exit": 255,
+          "timed_out": false
+        },
+        {
+          "kind": "remote_authorization_revoked",
+          "path": "/tmp/shenko-c17-scripts-45zhEXYR/journey-schema-boundary/deployment/receipt-install-cd4b3c58-7dfd-4988-9fee-ac45c846ecde.json",
+          "sha256": "f9a5fe65f1e4fe8c5fa24c66702c95ac299d23966f54278c44b97af3111db6c8",
+          "ssh_exit": 255,
+          "timed_out": false
+        }
+      ],
+      "unrelated_db_unchanged": true,
+      "legacy_migration": {
+        "old_tables_preserved": 10,
+        "source_readonly": true,
+        "storage_schema": 2
+      }
+    },
+    "journey_2": {
+      "task_id": "4a853ca7-2130-43e0-b34e-784cae930d16",
+      "epochs": [
+        "1",
+        "2"
+      ],
+      "terminal_results": 1,
+      "source_events": 2,
+      "receipt_rows": 3,
+      "prior_PR40_E1_T2_assertions_retained": true,
+      "old_computation_claimed_stopped": false
+    },
+    "publication_fault": {
+      "C07_redispatch_test": false,
+      "crash_exit": 91,
+      "damaged_evidence_preserved": true,
+      "kind": "pure_python_process_fault",
+      "partial_final_published": false,
+      "power_loss_test": false,
+      "repair_operation": "87f9f09f-31e7-41b8-bf2b-6f2f64464a27"
+    },
+    "static_only": [
+      "POSIX file/directory fsync ordering; no physical power-loss experiment",
+      "A full deployment originally created by the schema-1 executable has not been repaired over SSH; the real SSH boundary/repair lifecycle uses a projected schema-1-format plan and existing schema-2 CAS operation."
+    ],
+    "command": "python3 -I /tmp/shenko-c17-scripts-45zhEXYR/repo/crates/shenko-node/tests/managed_journey.py /tmp/shenko-c17-scripts-45zhEXYR/repo /tmp/shenko-c17-scripts-45zhEXYR/shenko-node-453fff7 /tmp/shenko-c17-repair-LzjgwLDo/task_ssh /tmp/shenko-c07-sshd-packages-BKBF7d6n/root/usr/sbin/sshd /tmp/shenko-c07-sshd-packages-BKBF7d6n/root/usr/lib/x86_64-linux-gnu /tmp/shenko-c17-scripts-45zhEXYR/journey-schema-boundary /tmp/shenko-c17-kxCI4JuI/journey-final/remote-worker/data",
+    "failure_history": [
+      "Initial inspection shell quoting exited 2 before reading/modifying source.",
+      "Unpublished rebase onto latest main had expected original-journey/docs conflicts; both PR40 assertions and this slice preserved. No reset/stash/force or lost source.",
+      "First checkpoint journey used PR37 matching native source; final main-integrated journey uses matching PR40 final binary. No old binary was represented as a build of new Rust.",
+      "Read-only GitHub PR inspection requested unsupported old-gh field baseRefOid; command failed without product side effects; corrected to supported fields.",
+      "Publication-seat inspection used an initialized, un-checked-out transfer repository; git log exit128 was inspected without reset, stash or overwriting any checkout."
+    ],
+    "docs_check_exit": 0,
+    "diff_check_exit": 0,
+    "old_plan_boundary": {
+      "direct_invoke_rejected": true,
+      "fixture": "schema-1 shape projected from current plan; not old binary deployment",
+      "fresh_operation_attempts": 0,
+      "old_operation": "32fe68db-3219-52ae-aafd-f8971d20c75c",
+      "old_plan_preserved": true,
+      "old_plan_sha256": "ce4ed762c4ca87e74af317bb8c0cbb3695bb94ee7c6fea65632fa31083e1d1bb",
+      "old_query_repeats": 2,
+      "original_and_repair_attempts": 1,
+      "rejected_cli_exit_codes": [
+        1,
+        1
+      ],
+      "repair_deployment": "78a81850-211e-4143-a615-ebdc9817533a",
+      "repair_lineage": {
+        "deployment_id": "b5758b4a-f387-4ff7-bdf4-1e6500ebee87",
+        "plan_sha256": "ce4ed762c4ca87e74af317bb8c0cbb3695bb94ee7c6fea65632fa31083e1d1bb"
+      },
+      "repair_operation": "2bddf070-5de8-5344-a655-28b33eb4826c",
+      "repair_query_repeats": 2
+    },
+    "call_path_reproduction": {
+      "exit": 0,
+      "path": "/tmp/shenko-c17-scripts-45zhEXYR/boundary-reproduction.json",
+      "sha256": "ea64abd77727f0324939628f63e5a89021950d37ae84b731e7c80c37bc36c494",
+      "scope": "actual original schema-1 plan, transport mocked; baseline reaches task/execute, fix rejects before driver or request file. Not SSH."
+    },
+    "fresh_retest_product_commit": "ad3da672c018c18480d8f71716b6aead79b59826",
+    "fresh_log_sha256": "4db48cac29408398ffde5ee3754551188207b9f8b63b01fb3022650e3d011fba",
+    "fresh_result_sha256": "83f5e7bc2436d2c00e5817931c1d2ab3645f4cd0cb2372eba95a1830cbbb8970"
+  },
+  "pre_main_advance_artifacts": {
+    "candidate_repo": "/tmp/shenko-c17-scripts-45zhEXYR/repo",
+    "input_manifest": "/tmp/shenko-c17-scripts-45zhEXYR/candidate-inputs-complete.json",
+    "read_only_snapshot": "/tmp/shenko-c17-scripts-45zhEXYR/review-snapshot-complete",
+    "snapshot_head": "c10e6c210e8a0c12d22f6ea0e9913c194b786df6",
+    "final_journey_log": "/tmp/shenko-c17-scripts-45zhEXYR/journey-schema-boundary.log",
+    "result": "/tmp/shenko-c17-scripts-45zhEXYR/journey-schema-boundary/result.json",
+    "raw_receipts": "/tmp/shenko-c17-scripts-45zhEXYR/journey-schema-boundary/deployment",
+    "service_stop": "/tmp/shenko-c17-scripts-45zhEXYR/journey-schema-boundary/service-stop.json",
+    "baseline_publication": "/tmp/shenko-c17-scripts-45zhEXYR/baseline-publication",
+    "previous_read_only_snapshot_preserved": "/tmp/shenko-c17-scripts-45zhEXYR/review-snapshot",
+    "schema_boundary_plan": "/tmp/shenko-c17-scripts-45zhEXYR/journey-schema-boundary/legacy-plan/plan.json",
+    "repair_plan": "/tmp/shenko-c17-scripts-45zhEXYR/journey-schema-boundary/repair-deployment/plan.json",
+    "repair_raw_receipts": "/tmp/shenko-c17-scripts-45zhEXYR/journey-schema-boundary/repair-deployment"
+  },
+  "pre_main_advance_input_manifest": {
+    "path": "/tmp/shenko-c17-scripts-45zhEXYR/candidate-inputs-schema-boundary.json",
+    "sha256": "2c8132020b6160541d7f5c113d5ec23509c2e637aab6cf3a4990f8ac065cb5bc",
+    "product_commit": "ad3da672c018c18480d8f71716b6aead79b59826",
+    "files": 247,
+    "symlinks": 19,
+    "scope": "clean product commit before evidence-only documentation update; not a hash claim for future delivery docs"
+  },
+  "main_integration": {
+    "previous_tested_head": "396f52df17b013c4f8f6818757a59091332c6204",
+    "new_main": "9d6c1af980ded1c4e8c7cd4dc24acd7405b92330",
+    "normal_merge": "7c1d91b49757c6256f9236c9c802cb1d8bafdc95",
+    "authors_and_parents_preserved": true,
+    "conflicts": false,
+    "C17_files_changed_by_main": false,
+    "fresh_targeted_native_build_required": true,
+    "reason": "Cargo/types/store transitive input changes invalidate blanket reuse of old native evidence; fresh artifact and driver bound to clean merge source."
+  },
+  "delivery": {
+    "pr": "https://github.com/cyjin-yl/shenko/pull/44",
+    "state": "MERGED",
+    "draft": false,
+    "original_base": "011cce9b81cb3a14306c9bd9aae451742f2f6bf2",
+    "code_integration_base": "9d6c1af980ded1c4e8c7cd4dc24acd7405b92330",
+    "actual_target_parent": "6dca5a325f91138967ed5b6cd90872ceaf8a6e37",
+    "pushed_head": "c696d230979157257c9ff9aec1a26fd2c16611bc",
+    "merge_commit": "0368b8faec6aecf51622d8340d3003944ebda27d",
+    "merged_tree": "e24f6657427a93549370fb87dc958b96593150d8",
+    "merged_tree_equals_docs_checked_merge_preview": true,
+    "merged_native_script_inputs_equal_verified_product": true,
+    "native_script_input_diff_exit": 0,
+    "merged_preview_docs_exit": 0,
+    "github_checks": 0,
+    "protection_changed": false,
+    "force_push": false,
+    "issue22_state": "OPEN",
+    "issue22_assignee": "cyjin-yl",
+    "issue4_state": "OPEN",
+    "full_goal_complete": false
+  }
+}

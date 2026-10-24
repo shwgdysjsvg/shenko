@@ -441,14 +441,19 @@
         "B19"
       ],
       "specification_state": "specified",
-      "implementation_state": "not_assessed",
+      "implementation_state": "partial",
       "evidence_state": [],
       "acceptance_case_ids": [],
-      "implementation_refs": [],
-      "evidence_refs": [],
+      "implementation_refs": [
+        "crates/shenko-node/src/lib.rs",
+        "scripts/managed_node.py"
+      ],
+      "evidence_refs": [
+        "docs/evidence/c17-native-first-journey-20261025.json"
+      ],
       "blockers": [],
       "satisfied": false,
-      "note": "规格存在；接手者按完整要求选择适用验收与所需真实证据。本字段不声称产品已实现。"
+      "note": "C17 native first-journey slice only: real isolated OpenSSH deployment-loss recovery, virgin identity adoption, pure task epoch-fenced result acceptance and bounded raw-event export. Fixture parent/identity; no production scheduler/election/model/privacy/platform/image or full case completion. All formal remaining scope preserved in C17 and evidence."
     },
     {
       "requirement_id": "R027",
@@ -886,14 +891,23 @@
         "B40"
       ],
       "specification_state": "specified",
-      "implementation_state": "not_assessed",
+      "implementation_state": "partial",
       "evidence_state": [],
-      "acceptance_case_ids": [],
-      "implementation_refs": [],
+      "acceptance_case_ids": [
+        "A36",
+        "A46"
+      ],
+      "implementation_refs": [
+        "crates/shenko-types/src/identity.rs",
+        "crates/shenko-identity/src/lib.rs",
+        "crates/shenko-store/src/identity.rs",
+        "crates/shenko-subject/src/loop_runner.rs",
+        "bin/shenko/src/main.rs"
+      ],
       "evidence_refs": [],
       "blockers": [],
       "satisfied": false,
-      "note": "规格存在；接手者按完整要求选择适用验收与所需真实证据。本字段不声称产品已实现。"
+      "note": "C22：版本化 IdentityProfile 在固定运行合同之后装配，仅在 S0 边界重载；revision+digest 封入输入计划，可追溯。fixture 验证，未在真实模型上观察。"
     },
     {
       "requirement_id": "R054",
@@ -902,14 +916,23 @@
         "B40"
       ],
       "specification_state": "specified",
-      "implementation_state": "not_assessed",
+      "implementation_state": "partial",
       "evidence_state": [],
-      "acceptance_case_ids": [],
-      "implementation_refs": [],
+      "acceptance_case_ids": [
+        "A36",
+        "A46"
+      ],
+      "implementation_refs": [
+        "crates/shenko-types/src/identity.rs",
+        "crates/shenko-identity/src/lib.rs",
+        "crates/shenko-store/src/identity.rs",
+        "crates/shenko-subject/src/loop_runner.rs",
+        "bin/shenko/src/main.rs"
+      ],
       "evidence_refs": [],
       "blockers": [],
       "satisfied": false,
-      "note": "规格存在；接手者按完整要求选择适用验收与所需真实证据。本字段不声称产品已实现。"
+      "note": "C22：人格段落只追加在 SUBJECT_CONTRACT 之后，不含工具 schema/权限/资源字段；[identity:*] 只能改 name/soul/personality。"
     },
     {
       "requirement_id": "R055",
@@ -1715,14 +1738,23 @@
         "B40"
       ],
       "specification_state": "specified",
-      "implementation_state": "not_assessed",
+      "implementation_state": "partial",
       "evidence_state": [],
-      "acceptance_case_ids": [],
-      "implementation_refs": [],
+      "acceptance_case_ids": [
+        "A36",
+        "A46"
+      ],
+      "implementation_refs": [
+        "crates/shenko-types/src/identity.rs",
+        "crates/shenko-identity/src/lib.rs",
+        "crates/shenko-store/src/identity.rs",
+        "crates/shenko-subject/src/loop_runner.rs",
+        "bin/shenko/src/main.rs"
+      ],
       "evidence_refs": [],
       "blockers": [],
       "satisfied": false,
-      "note": "规格存在；接手者按完整要求选择适用验收与所需真实证据。本字段不声称产品已实现。"
+      "note": "C22：身份策略由原生 Cordis IdentityService 提供；S0 固定 profile/provider revision，S1 同事务保存身份意图、profile 或 conflict 回执、head/后继，下一边界采用。有限 child 的灵魂文件提升与真实模型验证仍未完成。"
     },
     {
       "requirement_id": "R106",
@@ -1838,16 +1870,21 @@
         "B53"
       ],
       "specification_state": "specified",
-      "implementation_state": "not_assessed",
+      "implementation_state": "partial",
       "evidence_state": [],
       "acceptance_case_ids": [
         "A42"
       ],
-      "implementation_refs": [],
-      "evidence_refs": [],
+      "implementation_refs": [
+        "crates/shenko-node/src/lib.rs",
+        "scripts/managed_node.py"
+      ],
+      "evidence_refs": [
+        "docs/evidence/c17-native-first-journey-20261025.json"
+      ],
       "blockers": [],
       "satisfied": false,
-      "note": "规格存在；接手者按完整要求选择适用验收与所需真实证据。本字段不声称产品已实现。"
+      "note": "C17 native first-journey slice only: real isolated OpenSSH deployment-loss recovery, virgin identity adoption, pure task epoch-fenced result acceptance and bounded raw-event export. Fixture parent/identity; no production scheduler/election/model/privacy/platform/image or full case completion. All formal remaining scope preserved in C17 and evidence."
     },
     {
       "requirement_id": "R114",
@@ -1941,14 +1978,25 @@
         "B40"
       ],
       "specification_state": "specified",
-      "implementation_state": "not_assessed",
+      "implementation_state": "partial",
       "evidence_state": [],
-      "acceptance_case_ids": [],
-      "implementation_refs": [],
+      "acceptance_case_ids": [
+        "A36",
+        "A46"
+      ],
+      "implementation_refs": [
+        "crates/shenko-types/src/identity.rs",
+        "crates/shenko-identity/src/lib.rs",
+        "crates/shenko-store/src/identity.rs",
+        "crates/shenko-subject/src/loop_runner.rs",
+        "bin/shenko/src/main.rs",
+        "crates/shenko-ui/src/api.rs",
+        "crates/shenko-ui/src/index.html"
+      ],
       "evidence_refs": [],
       "blockers": [],
       "satisfied": false,
-      "note": "规格存在；接手者按完整要求选择适用验收与所需真实证据。本字段不声称产品已实现。"
+      "note": "C22：框架名与实例名分离；--name 仅初始化，既有编辑须 expected revision；命名/人格/灵魂解析与装配在可替换原生 Cordis IdentityService，主体在 S0 解析能力，仍为同一 agent_id。控制正文分离且原文/来源归档。UI 使用 S1 真实回执 revision。完整跨节点及真实模型验收未完成。"
     },
     {
       "requirement_id": "R118",
@@ -2439,18 +2487,23 @@
         "B39"
       ],
       "specification_state": "specified",
-      "implementation_state": "not_assessed",
+      "implementation_state": "partial",
       "evidence_state": [],
       "acceptance_case_ids": [
         "A42",
         "A47",
         "A48"
       ],
-      "implementation_refs": [],
-      "evidence_refs": [],
+      "implementation_refs": [
+        "crates/shenko-node/src/lib.rs",
+        "scripts/managed_node.py"
+      ],
+      "evidence_refs": [
+        "docs/evidence/c17-native-first-journey-20261025.json"
+      ],
       "blockers": [],
       "satisfied": false,
-      "note": "规格存在；接手者按完整要求选择适用验收与所需真实证据。本字段不声称产品已实现。"
+      "note": "C17 native first-journey slice only: real isolated OpenSSH deployment-loss recovery, virgin identity adoption, pure task epoch-fenced result acceptance and bounded raw-event export. Fixture parent/identity; no production scheduler/election/model/privacy/platform/image or full case completion. All formal remaining scope preserved in C17 and evidence."
     },
     {
       "requirement_id": "R146",
@@ -2481,16 +2534,21 @@
         "B37"
       ],
       "specification_state": "specified",
-      "implementation_state": "not_assessed",
+      "implementation_state": "partial",
       "evidence_state": [],
       "acceptance_case_ids": [
         "A49"
       ],
-      "implementation_refs": [],
-      "evidence_refs": [],
+      "implementation_refs": [
+        "crates/shenko-node/src/lib.rs",
+        "scripts/managed_node.py"
+      ],
+      "evidence_refs": [
+        "docs/evidence/c17-native-first-journey-20261025.json"
+      ],
       "blockers": [],
       "satisfied": false,
-      "note": "规格存在；接手者按完整要求选择适用验收与所需真实证据。本字段不声称产品已实现。"
+      "note": "C17 native first-journey slice only: real isolated OpenSSH deployment-loss recovery, virgin identity adoption, pure task epoch-fenced result acceptance and bounded raw-event export. Fixture parent/identity; no production scheduler/election/model/privacy/platform/image or full case completion. All formal remaining scope preserved in C17 and evidence."
     }
   ]
 }

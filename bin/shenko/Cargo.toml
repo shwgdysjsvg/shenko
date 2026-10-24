@@ -10,6 +10,8 @@ name = "shenko"
 path = "src/main.rs"
 
 [dependencies]
+cordis-core.workspace = true
+shenko-identity = { path = "../../crates/shenko-identity" }
 shenko-types = { path = "../../crates/shenko-types" }
 shenko-kernel = { path = "../../crates/shenko-kernel" }
 shenko-store = { path = "../../crates/shenko-store" }

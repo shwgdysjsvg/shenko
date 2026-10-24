@@ -36,6 +36,9 @@ impl Inbox {
         Self { tx, rx: Mutex::new(rx) }
     }
 
+    /// Stop new in-memory admissions even while an owning Arc survives in main.
+    pub async fn close(&self) { self.rx.lock().await.close(); }
+
     pub fn sender(&self) -> mpsc::Sender<InboxEvent> { self.tx.clone() }
 
     pub async fn recv_batch(&self, max: usize, timeout_ms: u64) -> Vec<InboxEvent> {
