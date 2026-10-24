@@ -7,7 +7,7 @@ use parking_lot::Mutex;
 use serde::{Deserialize, Serialize};
 use shenko_types::ids::EntityId;
 
-use crate::history::{HistorySource, ItemRef};
+use crate::history::{HistoryError, HistorySource, ItemRef};
 use crate::policy::{CostReport, Derivative, PreparedWindow, WindowBase, WindowEntry};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -75,20 +75,20 @@ impl CommittedWindow {
 
     /// The model-visible sequence now: stored entries plus every raw event
     /// that arrived after the window was cut.
-    pub fn materialize(&self, history: &dyn HistorySource) -> Vec<WindowEntry> {
+    pub fn materialize(&self, history: &dyn HistorySource) -> Result<Vec<WindowEntry>, HistoryError> {
         let mut out = self.entries.clone();
         let from = self.covers_through.map_or(0, |seq| seq + 1);
-        if let Some(leaf) = history.leaf_seq() {
+        if let Some(leaf) = history.leaf_seq()? {
             if from <= leaf {
                 out.extend(
                     history
-                        .read_range(from, leaf)
+                        .read_range(from, leaf)?
                         .into_iter()
                         .map(|item| WindowEntry::Verbatim { at: item.at, tokens: item.tokens }),
                 );
             }
         }
-        out
+        Ok(out)
     }
 }
 
@@ -102,6 +102,8 @@ pub enum CommitError {
     StalePolicy { policy: String, epoch: u64 },
     #[error("prepared leaf {prepared} is ahead of the history leaf {leaf:?}")]
     LeafAhead { prepared: u64, leaf: Option<u64> },
+    #[error(transparent)]
+    History(#[from] HistoryError),
 }
 
 struct LedgerState {
@@ -170,12 +172,12 @@ impl WindowLedger {
                 current: state.model_generation,
             });
         }
-        let leaf = history.leaf_seq();
+        let leaf = history.leaf_seq()?;
         if leaf.is_none_or(|leaf| prepared.base.leaf_seq > leaf) {
             return Err(CommitError::LeafAhead { prepared: prepared.base.leaf_seq, leaf });
         }
 
-        let previous = current.materialize(history);
+        let previous = current.materialize(history)?;
         let mut window = CommittedWindow {
             id: EntityId::new(),
             generation: current.generation + 1,
@@ -188,7 +190,7 @@ impl WindowLedger {
             model_generation: prepared.base.model_generation,
             cost: prepared.cost,
         };
-        let next = window.materialize(history);
+        let next = window.materialize(history)?;
         // Reusable only when the binding is unchanged and the final input of
         // each leading entry is identical, derivative bytes included.
         let reused: u32 = if current.model_generation == window.model_generation {

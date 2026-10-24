@@ -5,8 +5,13 @@ edition.workspace = true
 authors.workspace = true
 license.workspace = true
 
+[features]
+# HistorySource over the durable session store; strategy plugins do not need it.
+store = ["dep:shenko-store"]
+
 [dependencies]
 shenko-types = { path = "../shenko-types" }
+shenko-store = { path = "../shenko-store", optional = true }
 cordis-core = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }

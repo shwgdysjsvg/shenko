@@ -6,11 +6,13 @@ pub mod store;
 pub mod cas;
 pub mod ledger;
 pub mod memory;
+pub mod session_events;
 
 pub use store::*;
 pub use cas::*;
 pub use ledger::*;
 pub use memory::*;
+pub use session_events::*;
 
 pub mod external;
 pub use external::TaskInvocation;

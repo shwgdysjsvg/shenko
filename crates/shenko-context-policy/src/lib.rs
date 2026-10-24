@@ -10,9 +10,13 @@
 pub mod history;
 pub mod policy;
 pub mod registry;
+#[cfg(feature = "store")]
+pub mod store_history;
 pub mod window;
 
 pub use history::*;
 pub use policy::*;
 pub use registry::*;
+#[cfg(feature = "store")]
+pub use store_history::*;
 pub use window::*;

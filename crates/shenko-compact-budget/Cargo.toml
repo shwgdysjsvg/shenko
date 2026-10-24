@@ -11,6 +11,11 @@ cordis-core = { workspace = true }
 
 [dev-dependencies]
 shenko-kernel = { path = "../shenko-kernel" }
+shenko-context-policy = { path = "../shenko-context-policy", features = ["store"] }
+shenko-store = { path = "../shenko-store" }
+shenko-types = { path = "../shenko-types" }
+rusqlite = { workspace = true }
+serde_json = { workspace = true }
 tokio = { workspace = true }
 tokio-util = { workspace = true }
 [lints.rust]

@@ -42,6 +42,9 @@ pub enum ItemKind {
     /// `text` may be a bounded rendering of them.
     ToolCall { call_id: String, tool: String, args_ref: String, status: CallStatus },
     ToolResult { call_id: String, status: CallStatus },
+    /// An event type this contract version does not interpret. Kept, never
+    /// dropped, so a window cannot silently lose part of the raw record.
+    Other { event_type: String },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -53,12 +56,18 @@ pub struct HistoryItem {
     pub tokens: u32,
 }
 
+/// A failed read. It must fail the window operation: treating it as "no
+/// history" would cut a window from a silently truncated record.
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error, Serialize, Deserialize)]
+#[error("history read failed: {0}")]
+pub struct HistoryError(pub String);
+
 /// Read access to raw history, independent of any policy plugin being alive.
 pub trait HistorySource: Send + Sync {
     /// Items with `from <= seq <= to`, in order.
-    fn read_range(&self, from: u64, to: u64) -> Vec<HistoryItem>;
-    fn read_event(&self, event_id: EntityId) -> Option<HistoryItem>;
-    fn leaf_seq(&self) -> Option<u64>;
+    fn read_range(&self, from: u64, to: u64) -> Result<Vec<HistoryItem>, HistoryError>;
+    fn read_event(&self, event_id: EntityId) -> Result<Option<HistoryItem>, HistoryError>;
+    fn leaf_seq(&self) -> Result<Option<u64>, HistoryError>;
 }
 
 /// In-process append-only history used until the durable ledger adapter lands.
@@ -86,19 +95,19 @@ impl MemoryHistory {
 }
 
 impl HistorySource for MemoryHistory {
-    fn read_range(&self, from: u64, to: u64) -> Vec<HistoryItem> {
+    fn read_range(&self, from: u64, to: u64) -> Result<Vec<HistoryItem>, HistoryError> {
         let items = self.items.read();
         let end = (to.saturating_add(1)).min(items.len() as u64) as usize;
         let start = (from as usize).min(end);
-        items[start..end].to_vec()
+        Ok(items[start..end].to_vec())
     }
 
-    fn read_event(&self, event_id: EntityId) -> Option<HistoryItem> {
-        self.items.read().iter().find(|i| i.at.event_id == event_id).cloned()
+    fn read_event(&self, event_id: EntityId) -> Result<Option<HistoryItem>, HistoryError> {
+        Ok(self.items.read().iter().find(|i| i.at.event_id == event_id).cloned())
     }
 
-    fn leaf_seq(&self) -> Option<u64> {
-        self.items.read().last().map(|i| i.at.seq)
+    fn leaf_seq(&self) -> Result<Option<u64>, HistoryError> {
+        Ok(self.items.read().last().map(|i| i.at.seq))
     }
 }
 

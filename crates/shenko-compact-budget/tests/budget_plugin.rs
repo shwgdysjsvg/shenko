@@ -41,7 +41,7 @@ async fn budget_window_keeps_unfinished_calls_and_fences_replaced_generations() 
     host.spawn(ContextPolicyHost, registry.clone()).await.unwrap();
     let budget = host.spawn(BudgetCompactPlugin, BudgetConfig::default()).await.unwrap();
     assert_eq!(registry.installed()[0].0.id, POLICY_ID);
-    assert!(registry.should_compact(&history, &caps(), used));
+    assert!(registry.should_compact(&history, &caps(), used).unwrap());
 
     let (prepared, _) = registry.prepare(&history, &caps(), used).unwrap();
     assert_eq!(prepared.carried_calls, vec!["ssh-1".to_string()]);
@@ -63,18 +63,18 @@ async fn budget_window_keeps_unfinished_calls_and_fences_replaced_generations() 
 
     // Still above the trigger, but re-cutting the same raw history gains
     // nothing against the window the model sees now: refused, not repeated.
-    let now: u32 = window.materialize(&history).iter().map(WindowEntry::tokens).sum();
-    assert!(registry.should_compact(&history, &caps(), now));
+    let now: u32 = window.materialize(&history).unwrap().iter().map(WindowEntry::tokens).sum();
+    assert!(registry.should_compact(&history, &caps(), now).unwrap());
     let again = registry.prepare(&history, &caps(), now).unwrap_err();
-    assert_eq!(again.attempts[0].outcome, Err(PolicyError::NoReduction));
+    assert_eq!(again.attempts()[0].outcome, Err(PolicyError::NoReduction));
 
     // Uninstall the strategy; the committed window still resolves to raw events.
     budget.dispose().await.unwrap();
     assert!(registry.installed().is_empty());
-    let visible = registry.ledger().current().materialize(&history);
+    let visible = registry.ledger().current().materialize(&history).unwrap();
     assert!(visible.iter().any(|e| matches!(e, WindowEntry::Verbatim { at, .. } if *at == late)));
     let unknown_call = visible.iter().find_map(|e| match e {
-        WindowEntry::Verbatim { at, .. } => history.read_event(at.event_id).filter(|i| {
+        WindowEntry::Verbatim { at, .. } => history.read_event(at.event_id).unwrap().filter(|i| {
             matches!(i.kind, ItemKind::ToolCall { status: CallStatus::Unknown, .. })
         }),
         _ => None,
@@ -87,6 +87,6 @@ async fn budget_window_keeps_unfinished_calls_and_fences_replaced_generations() 
             _ => None,
         })
         .unwrap();
-    assert_eq!(history.read_range(from, to).len() as u64, to - from + 1);
+    assert_eq!(history.read_range(from, to).unwrap().len() as u64, to - from + 1);
     host.stop().await.unwrap();
 }

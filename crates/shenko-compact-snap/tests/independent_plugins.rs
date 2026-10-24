@@ -100,9 +100,9 @@ async fn snapcompact_renders_frames_and_uninstalls_independently() {
     // committed frame window: its text-only window would be larger, so it
     // is refused rather than swapped in.
     let refused = registry.prepare(&h, &VISION, used).unwrap_err();
-    assert_eq!(refused.attempts.len(), 1);
-    assert_eq!(refused.attempts[0].policy, "budget-compact");
-    assert_eq!(refused.attempts[0].outcome, Err(PolicyError::NoReduction));
+    assert_eq!(refused.attempts().len(), 1);
+    assert_eq!(refused.attempts()[0].policy, "budget-compact");
+    assert_eq!(refused.attempts()[0].outcome, Err(PolicyError::NoReduction));
     host.stop().await.unwrap();
 
     // Prefix reuse follows the actual input: identical entries whose PNG bytes
